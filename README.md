@@ -1,5 +1,9 @@
 # Radiopath
 
+> [!TIP]
+> **Just want to plan a link? Use the hosted instance: [app.radiopath.org](https://app.radiopath.org)**
+> — no installation, free to sign up. The rest of this README is about self-hosting.
+
 Radio coverage and link planning for amateur radio and beyond. Web application
 written in Go, inspired by Radio Mobile. Propagation is computed with the NTIA
 Irregular Terrain Model (Longley-Rice), ported to Go from the public domain
