@@ -156,6 +156,10 @@ func (s *Server) Handler() http.Handler {
 	share.HandleFunc("/", s.notFound)
 	root.Handle("/s/", s.shareLimit(share))
 	root.Handle("GET /tiles/{z}/{x}/{y}", s.Tiles)
+	root.HandleFunc("GET /robots.txt", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte("User-agent: *\nDisallow: /tiles/\n"))
+	})
 	root.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok\n")) })
 	root.HandleFunc("GET /readyz", s.readyz)
 	root.Handle("GET /static/", staticHandler())
