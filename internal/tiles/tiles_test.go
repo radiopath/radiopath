@@ -20,6 +20,7 @@ import (
 type memCache struct {
 	mu sync.Mutex
 	m  map[string][]byte
+	n  map[string]int
 }
 
 func (c *memCache) Get(_ context.Context, k string) ([]byte, error) {
@@ -33,6 +34,16 @@ func (c *memCache) Set(_ context.Context, k string, v []byte, _ time.Duration) e
 	c.m[k] = v
 	return nil
 }
+func (c *memCache) Incr(_ context.Context, k string, _ time.Duration) (int64, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.n == nil {
+		c.n = map[string]int{}
+	}
+	c.n[k]++
+	return int64(c.n[k]), nil
+}
+
 func (c *memCache) Ping(context.Context) error { return nil }
 
 func newProxy(t *testing.T, upstream http.HandlerFunc, cache Cache) (*Proxy, *int) {
@@ -226,5 +237,25 @@ func TestTrim(t *testing.T) {
 	}
 	if mpp := tr.MetresPerPixel(47.5); math.Abs((x2-x1)*mpp/0.7-75360) > 500 {
 		t.Errorf("metres per pixel %.2f gives %.0f m per degree", mpp, (x2-x1)*mpp/0.7)
+	}
+}
+
+func TestMissLimit(t *testing.T) {
+	png := append([]byte("\x89PNG\r\n\x1a\n"), []byte("tile")...)
+	p, hits := newProxy(t, func(w http.ResponseWriter, _ *http.Request) { w.Write(png) }, &memCache{m: map[string][]byte{}})
+	p.MissesPerIP = 2
+	p.ClientIP = func(*http.Request) string { return "198.51.100.7" }
+
+	for i, want := range []int{200, 200, 429} {
+		if rec := serve(p, fmt.Sprintf("/tiles/5/%d/0.png", i)); rec.Code != want {
+			t.Fatalf("tile %d: status %d, want %d", i, rec.Code, want)
+		}
+	}
+	if *hits != 2 {
+		t.Errorf("upstream fetches = %d, want 2", *hits)
+	}
+	// a cached tile costs no budget, so it is still served while the client is throttled
+	if rec := serve(p, "/tiles/5/0/0.png"); rec.Code != 200 || rec.Header().Get("X-Cache") != "HIT" {
+		t.Errorf("cached tile: status %d, X-Cache %q", rec.Code, rec.Header().Get("X-Cache"))
 	}
 }

@@ -54,6 +54,7 @@ type config struct {
 	redisURL      string
 	tileURL       string
 	tileTTL       time.Duration
+	tileMisses    int
 	smtp          mail.SMTP
 	baseURL       string
 }
@@ -114,6 +115,10 @@ func loadConfig() (config, error) {
 		return c, errors.New("RADIOPATH_DEM_CACHE_TILES must be a positive integer")
 	}
 	c.demCacheTiles = n
+	c.tileMisses, err = strconv.Atoi(envOr("RADIOPATH_TILE_MISSES_PER_IP", strconv.Itoa(tiles.DefaultMissesPerIP)))
+	if err != nil || c.tileMisses < 0 {
+		return c, errors.New("RADIOPATH_TILE_MISSES_PER_IP must be 0 or a positive integer")
+	}
 	c.workers, err = strconv.Atoi(envOr("RADIOPATH_WORKERS", "1"))
 	if err != nil || c.workers < 0 {
 		return c, errors.New("RADIOPATH_WORKERS must be 0 or a positive integer")
@@ -201,7 +206,7 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 		return err
 	}
 
-	proxy := &tiles.Proxy{Upstream: cfg.tileURL, TTL: cfg.tileTTL, Log: log}
+	proxy := &tiles.Proxy{Upstream: cfg.tileURL, TTL: cfg.tileTTL, MissesPerIP: cfg.tileMisses, Log: log}
 	if cfg.redisURL != "" {
 		rc, err := tiles.NewRedisCache(cfg.redisURL)
 		if err != nil {

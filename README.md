@@ -61,6 +61,7 @@ the same variables on the Deployment, secrets via `secretKeyRef`.
 | `RADIOPATH_REDIS_URL` | empty | Redis URL for the map tile cache, e.g. `redis://redis:6379/0`. Empty: tiles are proxied but not cached |
 | `RADIOPATH_TILE_URL` | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Upstream tile template (`{z}`, `{x}`, `{y}`, optional `{s}`) |
 | `RADIOPATH_TILE_TTL` | `720h` | Cache lifetime of a tile, in Redis and in the browser |
+| `RADIOPATH_TILE_MISSES_PER_IP` | `300` | Tiles one client IP may fetch upstream per minute; `0` disables the limit |
 
 Migrations are embedded and applied at startup.
 
@@ -349,7 +350,10 @@ Radiopath, which serves them from Redis or fetches them once from the upstream
 server with its own User-Agent and stores them for `RADIOPATH_TILE_TTL`. Tiles
 and static assets carry ETags, so a browser reload revalidates with 304 instead
 of downloading them again. Size the
-Redis `maxmemory` with an LRU policy; a few hundred MB is plenty. If you deploy
+Redis `maxmemory` with an LRU policy; a few hundred MB is plenty. Only tiles that
+miss the cache count against `RADIOPATH_TILE_MISSES_PER_IP`, so normal map use
+never hits the limit and a crawler walking the tile pyramid gets 429s; raise it
+if many users share one address behind NAT. If you deploy
 this publicly, read the OpenStreetMap tile usage policy and consider your own
 tile server or a commercial provider via `RADIOPATH_TILE_URL`.
 

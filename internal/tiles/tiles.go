@@ -23,6 +23,7 @@ import (
 const (
 	DefaultUpstream    = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 	DefaultTTL         = 30 * 24 * time.Hour
+	DefaultMissesPerIP = 300
 	maxZoom            = 19
 	maxTileBytes       = 2 << 20
 	userAgent          = "RadiopathTileProxy/1.0 (github.com/radiopath/radiopath)"
@@ -34,6 +35,7 @@ var pngMagic = []byte("\x89PNG")
 type Cache interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 	Set(ctx context.Context, key string, val []byte, ttl time.Duration) error
+	Incr(ctx context.Context, key string, ttl time.Duration) (int64, error)
 	Ping(ctx context.Context) error
 }
 
@@ -61,6 +63,14 @@ func (r *RedisCache) Set(ctx context.Context, key string, val []byte, ttl time.D
 	return r.c.Set(ctx, key, val, ttl).Err()
 }
 
+func (r *RedisCache) Incr(ctx context.Context, key string, ttl time.Duration) (int64, error) {
+	n, err := r.c.Incr(ctx, key).Result()
+	if err == nil && n == 1 {
+		err = r.c.Expire(ctx, key, ttl).Err()
+	}
+	return n, err
+}
+
 func (r *RedisCache) Ping(ctx context.Context) error { return r.c.Ping(ctx).Err() }
 
 func (r *RedisCache) Close() error { return r.c.Close() }
@@ -71,9 +81,16 @@ type Proxy struct {
 	TTL      time.Duration
 	Log      *slog.Logger
 
+	MissesPerIP int
+	ClientIP    func(*http.Request) string
+
 	Client *http.Client
 	prefix string
 }
+
+const missWindow = time.Minute
+
+var errLimited = errors.New("tile miss budget exhausted")
 
 func (p *Proxy) client() *http.Client {
 	if p.Client != nil {
@@ -113,8 +130,13 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	png, status, err := p.tile(r.Context(), z, x, y)
+	png, status, err := p.tile(r.Context(), p.clientIP(r), z, x, y)
 	if err != nil {
+		if errors.Is(err, errLimited) {
+			w.Header().Set("Retry-After", strconv.Itoa(int(missWindow.Seconds())))
+			http.Error(w, "too many tiles", http.StatusTooManyRequests)
+			return
+		}
 		if r.Context().Err() != nil {
 			w.WriteHeader(statusClientClosed)
 			return
@@ -127,7 +149,26 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.write(w, r, png, status)
 }
 
-func (p *Proxy) tile(ctx context.Context, z, x, y int) ([]byte, string, error) {
+func (p *Proxy) clientIP(r *http.Request) string {
+	if p.ClientIP == nil {
+		return ""
+	}
+	return p.ClientIP(r)
+}
+
+func (p *Proxy) allow(ctx context.Context, ip string) bool {
+	if p.MissesPerIP <= 0 || p.Cache == nil || ip == "" {
+		return true
+	}
+	n, err := p.Cache.Incr(ctx, p.prefix+"limit:"+ip, missWindow)
+	if err != nil {
+		p.Log.Warn("tile limit", "err", err)
+		return true
+	}
+	return n <= int64(p.MissesPerIP)
+}
+
+func (p *Proxy) tile(ctx context.Context, ip string, z, x, y int) ([]byte, string, error) {
 	key := p.key(z, x, y)
 	if p.Cache != nil {
 		png, err := p.Cache.Get(ctx, key)
@@ -137,6 +178,10 @@ func (p *Proxy) tile(ctx context.Context, z, x, y int) ([]byte, string, error) {
 			metrics.TileRequests.WithLabelValues("hit").Inc()
 			return png, "HIT", nil
 		}
+	}
+	if !p.allow(ctx, ip) {
+		metrics.TileRequests.WithLabelValues("limited").Inc()
+		return nil, "", errLimited
 	}
 	png, err := p.fetch(ctx, z, x, y)
 	if err != nil {

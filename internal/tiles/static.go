@@ -60,7 +60,7 @@ func (p *Proxy) Static(ctx context.Context, v View) ([]byte, error) {
 			continue
 		}
 		for tx := int(math.Floor(float64(x0) / tileSize)); tx*tileSize < x0+v.W; tx++ {
-			raw, _, err := p.tile(ctx, v.Zoom, ((tx%n)+n)%n, ty)
+			raw, _, err := p.tile(ctx, "", v.Zoom, ((tx%n)+n)%n, ty)
 			if err != nil {
 				return nil, fmt.Errorf("tiles: %d/%d/%d: %w", v.Zoom, tx, ty, err)
 			}

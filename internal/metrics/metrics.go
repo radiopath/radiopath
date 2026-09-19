@@ -57,7 +57,7 @@ var (
 
 	TileRequests = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "radiopath_map_tiles_total",
-		Help: "Map tiles served by result: hit, miss, error or canceled.",
+		Help: "Map tiles served by result: hit, miss, limited, error or canceled.",
 	}, []string{"result"})
 )
 

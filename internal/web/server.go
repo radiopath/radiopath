@@ -69,6 +69,10 @@ func (s *Server) Handler() http.Handler {
 				"templates/"+p+".html"))
 	}
 
+	if s.Tiles != nil {
+		s.Tiles.ClientIP = s.clientIP
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		n, err := s.Store.CountSites(r.Context(), currentUser(r).ID)
