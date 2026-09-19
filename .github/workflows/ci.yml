@@ -70,3 +70,28 @@ jobs:
           path: |
             cypress/screenshots/
             tmp/e2e/app.log
+
+  staging-image:
+    needs: [test, lint-css, e2e]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: version
+        run: echo "version=$(git describe --tags --always)" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          build-args: VERSION=${{ steps.version.outputs.version }}
+          tags: ghcr.io/${{ github.repository }}:staging
