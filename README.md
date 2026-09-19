@@ -16,7 +16,8 @@ around a transmitter, computed along radials and stored as PNG).
 ## Requirements
 
 - PostgreSQL with PostGIS
-- Redis for the map tile cache (optional, strongly recommended)
+- Valkey or Redis for the map tile cache (optional, strongly recommended). Only `GET`,
+  `SET` and `PING` are used, so any server speaking the Redis protocol will do
 - Terrain `.hgt` tiles in the SRTM format (1 or 3 arc-second, `N47E009.hgt`),
   either in a directory or in an S3 bucket. The production bucket holds
   Copernicus GLO-30 (30 m, global) converted with `scripts/sync-dem-s3.sh`;
@@ -66,7 +67,7 @@ Migrations are embedded and applied at startup.
 ## Development
 
 ```sh
-make db-up                 # PostGIS and Redis via docker compose
+make db-up                 # PostGIS, Valkey and Mailpit via docker compose
 mkdir dem && cd dem && curl -sSLO https://step.esa.int/auxdata/dem/SRTMGL1/N47E009.SRTMGL1.hgt.zip && unzip *.zip
 make run                   # creates .env from .env.example on first run, builds the CSS, then http://localhost:8080
 make test

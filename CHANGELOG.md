@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Dev stack now runs on 9.1-alpine aswell, just as the helmchart in production. (by @HB9HIL)
+
 ## [1.1.0] - 2026-09-19
 
 ### Added
