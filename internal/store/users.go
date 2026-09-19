@@ -178,10 +178,18 @@ func (s *Store) CreateSession(ctx context.Context, id string, userID int64, expi
 	return err
 }
 
-func (s *Store) SessionUser(ctx context.Context, id string) (User, error) {
+const sessionTarget = `LEAST(now() + make_interval(secs => $2), created_at + make_interval(secs => $3))`
+
+func (s *Store) SessionUser(ctx context.Context, id string, idle, maxAge time.Duration) (User, error) {
 	var u User
-	err := scanUser(s.pool.QueryRow(ctx, `SELECT `+userCols+` FROM sessions s JOIN users u ON u.id = s.user_id
-		WHERE s.id = $1 AND s.expires_at > now()`, id), &u)
+	err := scanUser(s.pool.QueryRow(ctx, `WITH touched AS (
+		UPDATE sessions SET expires_at = `+sessionTarget+`
+		WHERE id = $1 AND expires_at > now()
+			AND expires_at NOT BETWEEN `+sessionTarget+` - interval '1 hour' AND `+sessionTarget+`
+	)
+	SELECT `+userCols+` FROM sessions s JOIN users u ON u.id = s.user_id
+		WHERE s.id = $1 AND s.expires_at > now()`,
+		id, idle.Seconds(), maxAge.Seconds()), &u)
 	return u, mapErr(err)
 }
 

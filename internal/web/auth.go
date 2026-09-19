@@ -23,6 +23,7 @@ import (
 
 const (
 	sessionCookie    = "radiopath_session"
+	sessionIdle      = 7 * 24 * time.Hour
 	sessionTTL       = 30 * 24 * time.Hour
 	bcryptCost       = 12
 	maxPasswordBytes = 72 // bcrypt rejects longer input instead of truncating
@@ -96,7 +97,7 @@ func (s *Server) sessionUser(r *http.Request) (store.User, error) {
 	if err != nil {
 		return store.User{}, store.ErrNotFound
 	}
-	return s.Store.SessionUser(r.Context(), sessionID(c.Value))
+	return s.Store.SessionUser(r.Context(), sessionID(c.Value), sessionIdle, sessionTTL)
 }
 
 func (s *Server) requireAuth(next http.Handler) http.Handler {
@@ -226,7 +227,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) startSession(w http.ResponseWriter, r *http.Request, userID int64) error {
 	token, sid := newSessionToken()
-	if err := s.Store.CreateSession(r.Context(), sid, userID, time.Now().Add(sessionTTL)); err != nil {
+	if err := s.Store.CreateSession(r.Context(), sid, userID, time.Now().Add(sessionIdle)); err != nil {
 		return err
 	}
 	http.SetCookie(w, &http.Cookie{

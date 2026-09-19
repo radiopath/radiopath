@@ -201,9 +201,14 @@ radiopath userdel hb9hil      # also deletes their sites, links, coverages and a
 # Kubernetes: kubectl exec deploy/radiopath -- /radiopath useradd hb9hil <<< 'secret'
 ```
 
-Passwords are stored as bcrypt hashes. Sessions live in PostgreSQL (30 days,
-cookie holds a random token, the table its SHA-256), so any replica can serve
-any session and logout revokes it. The cookie is `HttpOnly`, `SameSite=Lax` and
+Passwords are stored as bcrypt hashes. Sessions live in PostgreSQL (cookie holds
+a random token, the table its SHA-256), so any replica can serve any session and
+logout revokes it. A session expires seven days after it was last used and
+thirty days after the login that created it, whichever comes first: the row's
+expiry is pushed back out on use, but never past that cap, so an abandoned
+login and a stolen cookie both die within a week
+(`sessionIdle` and `sessionTTL` in `internal/web/auth.go`). Refreshing writes at
+most once per session per hour, not once per request. The cookie is `HttpOnly`, `SameSite=Lax` and
 `Secure` when the request came over TLS or with `X-Forwarded-Proto: https`; make
 sure the ingress sets that header. CSRF protection uses Go's
 `http.CrossOriginProtection` (Sec-Fetch-Site / Origin checks on every POST),
@@ -390,7 +395,8 @@ Next to the `go_*` and `process_*` runtime metrics:
 - `radiopath_s3_requests_total{result}`, `radiopath_map_tiles_total{result}`,
   `radiopath_logins_total{result}`.
 - Gauges read from the database on every scrape: `radiopath_users`,
-  `radiopath_sites`, `radiopath_links`, `radiopath_sessions_active` and
+  `radiopath_sites`, `radiopath_links`, `radiopath_sessions_active` (sessions
+  that have not expired, so in practice those used in the last seven days) and
   `radiopath_coverages{job_state}`, the last one being the job queue depth. A
   database that is down leaves them out and logs a warning; the scrape still
   succeeds and everything else is still there.

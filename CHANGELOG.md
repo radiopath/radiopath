@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Every commit to main branch now builds a :staging image for the staging environment (by @HB9HIL)
 
+### Changed
+- Sessions now expire seven days after they were last used instead of thirty days after login, with thirty days from login as a hard cap. Existing sessions are pulled into the shorter window the next time they are used. (by @HB9HIL)
+
 ### Fixed
 - The ci pipline was still on push to master, fixed to main (by @HB9HIL)
 
