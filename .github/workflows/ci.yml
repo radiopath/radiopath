@@ -60,15 +60,15 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: CGO_ENABLED=0 go build -o radiopath ./cmd/radiopath
+      - run: CGO_ENABLED=0 go build -o bin/radiopath ./cmd/radiopath
       - run: npm ci --no-audit --no-fund
-      - run: scripts/e2e.sh
+      - run: e2e/e2e.sh
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-failure
           path: |
-            cypress/screenshots/
+            e2e/screenshots/
             tmp/e2e/app.log
 
   staging-image:
@@ -92,6 +92,7 @@ jobs:
       - uses: docker/build-push-action@v7
         with:
           context: .
+          file: docker/Dockerfile
           push: true
           build-args: VERSION=${{ steps.version.outputs.version }}
           tags: ghcr.io/${{ github.repository }}:staging

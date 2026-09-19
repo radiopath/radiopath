@@ -3,12 +3,13 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-: "${E2E_BIN:=./radiopath}"
+: "${E2E_BIN:=$(pwd)/bin/radiopath}"
 : "${E2E_BASE_URL:=http://localhost:8081}"
 : "${E2E_DATABASE_URL:=postgres://radiopath:radiopath@localhost:5432/radiopath_e2e}"
 : "${E2E_SMTP_HOST:=localhost}"
 : "${E2E_MAILPIT_URL:=http://localhost:8025}"
 : "${E2E_ADMIN_TOKEN:=e2e-only-admin-token-not-a-secret-1234}"
+: "${CYPRESS_IMAGE:=cypress/included:15.21.1}"
 export E2E_BIN E2E_BASE_URL E2E_DATABASE_URL E2E_MAILPIT_URL E2E_ADMIN_TOKEN
 
 [ -x "$E2E_BIN" ] || { echo "$E2E_BIN missing, run make build" >&2; exit 1; }
@@ -17,7 +18,7 @@ dem=tmp/e2e/dem
 mkdir -p "$dem"
 [ -s "$dem/N47E009.hgt" ] || head -c 25934402 /dev/zero >"$dem/N47E009.hgt"
 
-[ -n "${CI:-}" ] || docker compose exec -T db createdb -U radiopath radiopath_e2e 2>/dev/null || true
+[ -n "${CI:-}" ] || docker compose -f docker/compose.yaml exec -T db createdb -U radiopath radiopath_e2e 2>/dev/null || true
 
 # env -i: the Makefile exports .env, which must not leak into the test server
 start() {
@@ -60,8 +61,20 @@ until up; do
 	sleep 1
 done
 
+# Cypress runs in its own container, so no Electron has to work on the host.
+# --network host keeps the app, Mailpit and Postgres reachable under the same
+# URLs, and the repo is mounted at its own path so $E2E_BIN resolves unchanged.
+cypress() {
+	docker run --rm --network host --entrypoint cypress \
+		--user "$(id -u):$(id -g)" -e HOME=/tmp \
+		-v "$PWD:$PWD" -w "$PWD" \
+		-e E2E_BIN -e E2E_BASE_URL -e E2E_DATABASE_URL -e E2E_MAILPIT_URL -e E2E_ADMIN_TOKEN \
+		"$@"
+}
+
 if [ -n "${E2E_OPEN:-}" ]; then
-	npx cypress open --e2e
+	# the interactive runner needs the host X server (XWayland works too)
+	cypress -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix "$CYPRESS_IMAGE" open --e2e --project e2e
 else
-	npx cypress run
+	cypress "$CYPRESS_IMAGE" run --project e2e
 fi

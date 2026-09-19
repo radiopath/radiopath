@@ -1,3 +1,6 @@
+# name: without it Compose derives the project name from the docker/ directory and the volumes move.
+name: radiopath
+
 services:
   db:
     image: imresamu/postgis:17-3.5

@@ -1,8 +1,9 @@
 dem/
 *.hgt
 *.hgt.zip
-radiopath
+bin/
 .git/
-deploy/
+docker/
+e2e/
 .github/
 node_modules/

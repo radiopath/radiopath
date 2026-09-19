@@ -1,3 +1,4 @@
+/bin/
 /radiopath
 /dem/
 /canopy/
@@ -9,6 +10,6 @@
 /canopy-sync.log
 /node_modules/
 /tmp/
-/cypress/screenshots/
-/cypress/downloads/
+/e2e/screenshots/
+/e2e/downloads/
 /graphify-out/

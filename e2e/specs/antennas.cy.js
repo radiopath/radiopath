@@ -8,7 +8,7 @@ describe('antennas', () => {
   it('imports an MSI file', () => {
     cy.visit('/antennas')
     cy.contains('No antennas yet')
-    cy.get('input[type=file]').selectFile('cypress/fixtures/yagi.msi')
+    cy.get('input[type=file]').selectFile('fixtures/yagi.msi')
     cy.contains('button', 'Import').click()
     cy.contains('tr', 'E2E Yagi').within(() => {
       cy.contains('12.0 dBi')

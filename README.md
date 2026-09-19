@@ -73,8 +73,8 @@ make test
 make css-watch             # rebuild the stylesheet while editing templates
 ```
 
-`make run` and `make build` need Node for the stylesheet (see below); `go build`,
-`go test` and the Docker image do not.
+`make run` and `make build` need Node for the stylesheet (see below), `make e2e`
+additionally needs Docker; `go build`, `go test` and the Docker image do not.
 
 Releases: note the changes under `## [Unreleased]` in `CHANGELOG.md`, move them
 into a `## [X.Y.Z] - date` section and push the tag `vX.Y.Z`. The release
@@ -90,10 +90,13 @@ make e2e                   # builds the binary, starts it on :8081 against the d
 make e2e-open              # same, interactive runner
 ```
 
-`scripts/e2e.sh` runs the server with one flat DEM tile (`tmp/e2e/dem`, generated),
-registration on, Mailpit as SMTP server and a fixed admin token; `cypress.config.js`
-wipes the database before each spec and creates users through the CLI. The specs in
-`cypress/e2e` cover login, sites, antennas, links, coverage jobs, per-user
+`e2e/e2e.sh` runs the server with one flat DEM tile (`tmp/e2e/dem`, generated),
+registration on, Mailpit as SMTP server and a fixed admin token; `e2e/cypress.config.js`
+wipes the database before each spec and creates users through the CLI. Cypress itself
+runs from the pinned `cypress/included` image (override with `CYPRESS_IMAGE`), so no
+Electron has to work on the host and `npm ci` stays small; the container joins the host
+network and mounts the repo at its own path. The specs in
+`e2e/specs` cover login, sites, antennas, links, coverage jobs, per-user
 ownership, the account page, the admin panel and the mail flows (registration,
 confirmation, password reset). Map tiles are stubbed in the browser, nothing reaches
 the tile server. The GitHub Actions workflow (`.github/workflows/ci.yml`) runs

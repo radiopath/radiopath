@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - The ci pipline was still on push to master, fixed to main (by @HB9HIL)
 
+### Chore
+- Moved stuff in the repo around to make it a bit more organized (by @HB9HIL)
+
 ## [1.0.0] - 2026-09-19
 
 ### Added
