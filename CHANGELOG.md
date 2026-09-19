@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-20
+
+### Added
+- Added a rate limiter to the tile proxy (by @HB9HIL)
+
 ### Changed
 - Dev stack now runs on 9.1-alpine aswell, just as the helmchart in production. (by @HB9HIL)
 
