@@ -1,0 +1,65 @@
+{{define "section"}}links{{end}}
+{{define "head"}}
+<link rel="stylesheet" href="{{asset "/static/leaflet/leaflet.css"}}">
+<script src="{{asset "/static/leaflet/leaflet.js"}}" defer></script>
+<script src="{{asset "/static/map.js"}}" defer></script>
+{{if not .Shared}}<script src="{{asset "/static/forms.js"}}" defer></script>{{end}}
+{{end}}
+{{define "content"}}
+<div class="page-head">
+<h1>{{.Link.Name}}</h1>
+<div class="actions">
+{{if not .Shared}}
+<a class="btn" href="/links">Back</a>
+<a class="btn" href="/links/{{.Link.ID}}/edit">Edit</a>
+<a class="btn" href="/links/new?from={{.Link.ID}}">Duplicate</a>
+{{end}}
+<a class="btn" href="{{.Path}}/report.pdf" target="_blank" rel="noopener">Print report</a>
+{{if not .Shared}}<button class="btn{{if .Link.ShareToken}} btn-shared{{end}}" type="button" data-dialog="share"{{if .Link.ShareToken}} title="Public link active"{{end}}>Share</button>{{end}}
+</div>
+</div>
+{{if .Shared}}
+<div class="alert alert-info">Shared read-only view, valid until {{.Link.ShareExpires.Format "2006-01-02"}}.</div>
+{{end}}
+<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+<div>
+<h2>Sites</h2>
+{{template "link-sites" .}}
+<h2>Radio</h2>
+{{template "link-radio" .}}
+<h2>Result</h2>
+{{template "link-result" .}}
+</div>
+<div id="map"></div>
+</div>
+{{if not .Error}}
+<div class="panel mt-5">{{.SVG}}</div>
+<p class="hint">Terrain drawn with 4/3 earth curvature.{{if .Result.HasCanopy}} Green: tree canopy.{{end}} Red: direct ray. Blue dashed: first Fresnel zone.</p>
+{{end}}
+{{if not .Shared}}
+<dialog class="modal" id="share" data-reopen>
+<h2>Share this link</h2>
+{{if .Link.ShareToken}}
+<p class="mb-1 mt-3 text-[12px] text-muted">Public link</p>
+<div class="flex flex-wrap items-center gap-3">
+<input class="input max-w-120" id="share-url" readonly value="{{.ShareURL}}">
+<button class="btn" type="button" data-copy="share-url">Copy</button>
+</div>
+<p class="hint">Anyone with this link sees this page without an account, until {{.Link.ShareExpires.Format "2006-01-02"}}.</p>
+<div class="form-actions">
+<form method="post" action="/links/{{.Link.ID}}/share"><button class="btn">Extend by 30 days</button></form>
+<form method="post" action="/links/{{.Link.ID}}/share/delete"><button class="btn btn-danger">Revoke</button></form>
+<button class="btn" type="button" data-close="share">Close</button>
+</div>
+{{else}}
+<p class="hint">Creates a link that shows this page to anyone without an account, for 30 days.</p>
+<div class="form-actions">
+<form method="post" action="/links/{{.Link.ID}}/share"><button class="btn btn-primary">Create public link</button></form>
+<button class="btn" type="button" data-close="share">Close</button>
+</div>
+{{end}}
+</dialog>
+{{end}}
+<script>addEventListener('DOMContentLoaded',function(){cpLinkMap('map', {{.Link.SiteA}}, {{.Link.SiteB}})})</script>
+{{if not .Shared}}<script>addEventListener('DOMContentLoaded',function(){cpDialogs();cpCopyFields()})</script>{{end}}
+{{end}}

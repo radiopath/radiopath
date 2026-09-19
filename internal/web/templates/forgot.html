@@ -1,0 +1,13 @@
+{{define "section"}}login{{end}}
+{{define "content"}}
+<div class="mx-auto mt-10 w-full max-w-[26rem]">
+<h1 class="mb-4">Forgot password</h1>
+{{if .Notice}}<div class="alert alert-info">{{.Notice}}</div>{{end}}
+{{if .Errors}}<div class="alert alert-error"><ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<form class="sheet" method="post" action="/forgot">
+<label class="field field-narrow"><span>Email</span><input class="input" name="email" type="email" autocomplete="email" autofocus required></label>
+<div class="form-actions"><button class="btn btn-primary">Send reset link</button><a href="/login">Back to login</a></div>
+</form>
+<p class="hint">We mail a link to the address of your account. It is valid for one hour.</p>
+</div>
+{{end}}

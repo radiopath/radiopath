@@ -1,0 +1,79 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: test -z "$(gofmt -l cmd internal)" || { gofmt -l cmd internal; exit 1; }
+      - run: go vet ./...
+      - run: go test -race ./...
+
+  lint-css:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: cp internal/web/static/app.css committed.css
+      - run: npx tailwindcss -i internal/web/ui/app.css -o internal/web/static/app.css --minify
+      - run: cmp committed.css internal/web/static/app.css || { echo "app.css is stale, run 'make css' and commit"; exit 1; }
+
+  lint-chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v4
+      - run: helm lint deploy/chart -f deploy/values-example.yaml --set image.tag=test
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: imresamu/postgis:17-3.5
+        env:
+          POSTGRES_USER: radiopath
+          POSTGRES_PASSWORD: radiopath
+          POSTGRES_DB: radiopath
+        ports:
+          - 5432:5432
+      mailpit:
+        image: axllent/mailpit:v1.31.1
+        ports:
+          - 1025:1025
+          - 8025:8025
+    env:
+      E2E_DATABASE_URL: postgres://radiopath:radiopath@localhost:5432/radiopath
+      E2E_SMTP_HOST: localhost
+      E2E_MAILPIT_URL: http://localhost:8025
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: CGO_ENABLED=0 go build -o radiopath ./cmd/radiopath
+      - run: npm ci --no-audit --no-fund
+      - run: scripts/e2e.sh
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: e2e-failure
+          path: |
+            cypress/screenshots/
+            tmp/e2e/app.log

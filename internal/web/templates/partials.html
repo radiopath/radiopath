@@ -1,0 +1,84 @@
+{{define "link-sites"}}
+<table class="kv">
+<tr><th></th><th>A (TX)</th><th>B (RX)</th></tr>
+<tr><td>Name</td><td>{{.Link.SiteA.Name}}</td><td>{{.Link.SiteB.Name}}</td></tr>
+<tr><td>Position</td><td class="mono text-[12px]">{{printf "%.5f, %.5f" .Link.SiteA.Lat .Link.SiteA.Lon}}</td><td class="mono text-[12px]">{{printf "%.5f, %.5f" .Link.SiteB.Lat .Link.SiteB.Lon}}</td></tr>
+<tr><td>Antenna above ground</td><td class="mono">{{printf "%.1f m" .Link.SiteA.AntennaHeightM}}</td><td class="mono">{{printf "%.1f m" .Link.SiteB.AntennaHeightM}}</td></tr>
+{{if .Result}}<tr><td>Ground elevation</td><td class="mono">{{printf "%.0f m" .Result.TerrainAM}}</td><td class="mono">{{printf "%.0f m" .Result.TerrainBM}}</td></tr>{{end}}
+</table>
+{{end}}
+
+{{define "link-radio"}}
+<table class="kv">
+<tr><td>Frequency</td><td class="num">{{printf "%.3f MHz" .Link.FreqMHz}}</td></tr>
+<tr><td>Polarization</td><td class="num">{{if eq .Link.Polarization 1}}vertical{{else}}horizontal{{end}}</td></tr>
+<tr><td>TX power</td><td class="num">{{printf "%.1f dBm" .Link.TxPowerDBm}}</td></tr>
+<tr><td>TX gain / line loss</td><td class="num">{{printf "%.1f dBi / %.1f dB" .Link.TxGainDBi .Link.TxLineLossDB}}</td></tr>
+<tr><td>RX gain / line loss</td><td class="num">{{printf "%.1f dBi / %.1f dB" .Link.RxGainDBi .Link.RxLineLossDB}}</td></tr>
+<tr><td>RX sensitivity</td><td class="num">{{printf "%.1f dBm" .Link.RxSensitivityDBm}}</td></tr>
+<tr><td>TX pattern</td><td class="num">{{if .TxAntenna}}{{.TxAntenna}}, {{printf "%.0f deg" .TxAzimuthDeg}}{{if not .Link.TxAzimuthDeg}} (towards B){{end}}{{if .Link.TxTiltDeg}}, tilt {{printf "%.1f deg" .Link.TxTiltDeg}}{{end}}{{else}}<span class="text-muted">omnidirectional</span>{{end}}</td></tr>
+<tr><td>RX pattern</td><td class="num">{{if .RxAntenna}}{{.RxAntenna}}, {{printf "%.0f deg" .RxAzimuthDeg}}{{if not .Link.RxAzimuthDeg}} (towards A){{end}}{{if .Link.RxTiltDeg}}, tilt {{printf "%.1f deg" .Link.RxTiltDeg}}{{end}}{{else}}<span class="text-muted">omnidirectional</span>{{end}}</td></tr>
+</table>
+{{end}}
+
+{{define "link-result"}}
+{{if .Error}}
+<div class="alert alert-error">Calculation failed: {{.Error}}</div>
+{{else}}
+<div class="panel mb-3">
+<div class="flex items-baseline justify-between gap-4">
+<span class="text-[12px] text-muted">Link margin, median</span>
+<span class="font-mono text-[20px] font-bold {{if ge .Result.MarginDB 0.0}}text-ok{{else}}text-danger{{end}}">{{printf "%+.1f dB" .Result.MarginDB}}</span>
+</div>
+<div class="mt-1 flex items-baseline justify-between gap-4 border-t border-line-soft pt-1">
+<span class="text-[12px] text-muted">{{printf "%.0f %% of the time" .Reliability}}</span>
+<span class="font-mono text-[13px] {{if ge .Result.MarginRelDB 0.0}}text-ok{{else}}text-danger{{end}}">{{printf "%+.1f dB" .Result.MarginRelDB}}</span>
+</div>
+</div>
+<table class="kv">
+<tr><td>Distance</td><td class="num">{{printf "%.2f km" (divKm .Result.DistanceM)}}</td></tr>
+<tr><td>Bearing A to B</td><td class="num">{{printf "%.1f deg" .Result.BearingDeg}}</td></tr>
+<tr><td>Free space loss</td><td class="num">{{printf "%.1f dB" .Result.FreeSpaceLossDB}}</td></tr>
+<tr><td>Path loss (ITM), median</td><td class="num">{{printf "%.1f dB" .Result.PathLossDB}}</td></tr>
+<tr><td>Path loss, {{printf "%.0f %% of the time" .Reliability}}</td><td class="num">{{printf "%.1f dB" .Result.PathLossRelDB}}</td></tr>
+<tr><td>ITM propagation mode</td><td class="num">{{.Result.Mode}}</td></tr>
+{{if .TxAntenna}}<tr><td>TX pattern loss</td><td class="num">{{printf "%.1f dB" .Result.TxPatternLossDB}} <span class="text-muted">{{printf "(take-off %+.1f deg, %s)" .Result.TxTakeoffDeg (offBoresight .Result.TxOffBoresightDeg)}}</span></td></tr>{{end}}
+{{if .RxAntenna}}<tr><td>RX pattern loss</td><td class="num">{{printf "%.1f dB" .Result.RxPatternLossDB}} <span class="text-muted">{{printf "(take-off %+.1f deg, %s)" .Result.RxTakeoffDeg (offBoresight .Result.RxOffBoresightDeg)}}</span></td></tr>{{end}}
+{{if .Result.HasCanopy}}<tr><td>Vegetation loss (ITU-R P.833)</td><td class="num">{{printf "%.1f dB" .Result.VegetationLossDB}} <span class="text-muted">{{printf "(%.0f m at A, %.0f m at B in canopy)" .Result.CanopyPathAM .Result.CanopyPathBM}}</span></td></tr>{{end}}
+{{if .Result.ClutterLossDB}}<tr><td>Extra path loss</td><td class="num">{{printf "%.1f dB" .Result.ClutterLossDB}}</td></tr>{{end}}
+<tr><td>EIRP</td><td class="num">{{printf "%.1f dBm" .Result.EIRPdBm}}</td></tr>
+<tr><td>Received level</td><td class="num">{{printf "%.1f dBm" .Result.RxLevelDBm}}</td></tr>
+{{if .Link.MeasuredRxDBm}}<tr><td>Measured level</td><td class="num">{{printf "%.1f dBm" .MeasuredDBm}} <span class="{{if lt .MeasuredDeltaDB 0.0}}text-warn{{else}}text-muted{{end}}">({{printf "%+.1f dB" .MeasuredDeltaDB}})</span></td></tr>{{end}}
+<tr><td>Worst first Fresnel zone clearance</td><td class="num">{{printf "%.0f %% at %.2f km" .Result.WorstClearancePct (divKm .Result.WorstClearanceDistM)}}</td></tr>
+</table>
+{{if .Result.Warnings}}<div class="alert alert-warn mt-3"><ul>{{range .Result.Warnings}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+{{end}}
+{{end}}
+
+{{define "coverage-params"}}
+<table class="kv">
+<tr><td>Site (TX)</td><td>{{.Coverage.Site.Name}}<br><span class="mono text-[12px] text-muted">{{printf "%.5f, %.5f" .Coverage.Site.Lat .Coverage.Site.Lon}}, antenna {{printf "%.1f" .Coverage.Site.AntennaHeightM}} m above ground</span></td></tr>
+<tr><td>Frequency / polarization</td><td class="num">{{printf "%.3f" .Coverage.FreqMHz}} MHz, {{if eq .Coverage.Polarization 1}}vertical{{else}}horizontal{{end}}</td></tr>
+<tr><td>TX power / gain / line loss</td><td class="num">{{printf "%.1f dBm / %.1f dBi / %.1f dB" .Coverage.TxPowerDBm .Coverage.TxGainDBi .Coverage.TxLineLossDB}}</td></tr>
+<tr><td>RX height / gain / line loss</td><td class="num">{{printf "%.1f m / %.1f dBi / %.1f dB" .Coverage.RxHeightM .Coverage.RxGainDBi .Coverage.RxLineLossDB}}</td></tr>
+<tr><td>TX pattern</td><td class="num">{{if .TxAntenna}}{{.TxAntenna}}, main lobe {{printf "%.0f deg" .Coverage.TxAzimuthDeg}}{{if .Coverage.TxTiltDeg}}, tilt {{printf "%.1f deg" .Coverage.TxTiltDeg}}{{end}}{{else}}<span class="text-muted">omnidirectional</span>{{end}}</td></tr>
+<tr><td>RX sensitivity</td><td class="num">{{printf "%.1f dBm" .Coverage.RxSensitivityDBm}}</td></tr>
+<tr><td>Range / resolution</td><td class="num">{{printf "%.1f km / %.0f m" (divKm .Coverage.RangeM) .Coverage.ResolutionM}}</td></tr>
+</table>
+{{end}}
+
+{{define "coverage-result"}}
+<table class="kv">
+<tr><td>Computed</td><td class="num">{{.Coverage.ComputedAt.Format "2006-01-02 15:04:05"}} in {{.Coverage.ComputeTime}}</td></tr>
+<tr><td>Bounds N / S</td><td class="num">{{printf "%.5f / %.5f" .Coverage.Bounds.North .Coverage.Bounds.South}}</td></tr>
+<tr><td>Bounds W / E</td><td class="num">{{printf "%.5f / %.5f" .Coverage.Bounds.West .Coverage.Bounds.East}}</td></tr>
+<tr><td>Raster</td><td class="num"><a href="{{.Path}}/image.png">PNG</a>, {{printf "%.0f" .Coverage.ResolutionM}} m per pixel</td></tr>
+</table>
+{{end}}
+
+{{define "coverage-legend"}}
+<table class="kv">
+{{range .Bins}}<tr><td>{{.Label}}</td><td><span class="swatch" style="background:{{.CSS}}"></span></td></tr>{{end}}
+<tr><td>{{.Floor}}</td><td><span class="swatch"></span> <span class="text-muted">transparent</span></td></tr>
+</table>
+{{end}}

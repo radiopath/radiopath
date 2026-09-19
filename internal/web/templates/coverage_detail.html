@@ -1,0 +1,126 @@
+{{define "section"}}coverages{{end}}
+{{define "head"}}
+<link rel="stylesheet" href="{{asset "/static/leaflet/leaflet.css"}}">
+<script src="{{asset "/static/leaflet/leaflet.js"}}" defer></script>
+<script src="{{asset "/static/map.js"}}" defer></script>
+{{if not .Shared}}<script src="{{asset "/static/forms.js"}}" defer></script>{{end}}
+{{end}}
+{{define "content"}}
+<div class="page-head">
+<div class="flex flex-wrap items-center gap-3">
+<h1>{{.Coverage.Name}}</h1>
+{{if not .Shared}}<span class="badge badge-{{.Coverage.Job.State}}" id="job-badge">{{.Coverage.Job.State}}</span>{{end}}
+</div>
+<div class="actions">
+{{if not .Shared}}
+<a class="btn" href="/coverages">Back</a>
+<a class="btn" href="/coverages/{{.Coverage.ID}}/edit">Edit</a>
+<a class="btn" href="/coverages/new?from={{.Coverage.ID}}">Duplicate</a>
+{{end}}
+<a class="btn" href="{{.Path}}/report.pdf" target="_blank" rel="noopener">Print report</a>
+{{if not .Shared}}<button class="btn{{if .Coverage.ShareToken}} btn-shared{{end}}" type="button" data-dialog="share"{{if .Coverage.ShareToken}} title="Public link active"{{end}}>Share</button>{{end}}
+{{if not .Shared}}{{if or (eq .Coverage.Job.State "queued") (eq .Coverage.Job.State "running")}}<button class="btn" disabled>Computing&hellip;</button>{{else}}<form method="post" action="/coverages/{{.Coverage.ID}}/compute"><button class="btn btn-primary">{{if .Coverage.ComputedAt}}Recompute{{else}}Compute{{end}}</button></form>{{end}}{{end}}
+</div>
+</div>
+{{if .Shared}}
+<div class="alert alert-info">Shared read-only view, valid until {{.Coverage.ShareExpires.Format "2006-01-02"}}.</div>
+{{end}}
+{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+{{if not .Shared}}
+{{if eq .Coverage.Job.State "queued"}}<div class="alert alert-info" id="job">Queued since {{.Coverage.Job.QueuedAt.Format "15:04:05"}}, waiting for a worker.</div>{{end}}
+{{if eq .Coverage.Job.State "running"}}<div class="alert alert-info" id="job">Computing since {{.Coverage.Job.StartedAt.Format "15:04:05"}} on {{.Coverage.Job.Worker}}.</div>{{end}}
+{{if eq .Coverage.Job.State "failed"}}<div class="alert alert-error">Calculation failed: {{.Coverage.Job.Error}}</div>{{end}}
+{{end}}
+{{if .Coverage.Note}}<div class="alert alert-warn">{{.Coverage.Note}}</div>{{end}}
+<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+<div>
+<h2>Parameters</h2>
+{{template "coverage-params" .}}
+<h2>Result</h2>
+{{if .Coverage.ComputedAt}}
+{{template "coverage-result" .}}
+{{else if eq .Coverage.Job.State "idle"}}
+<p class="muted">Not computed yet.{{if not .Shared}} Press Compute.{{end}}</p>
+{{end}}
+<h2>Legend (link margin)</h2>
+{{template "coverage-legend" .}}
+{{if not .Shared}}<p class="mt-2"><button class="btn" type="button" data-dialog="legend">Edit legend</button></p>{{end}}
+</div>
+<div>
+<div id="map"></div>
+{{if or .Coverage.ComputedAt .Others}}
+<div class="panel mt-3">
+<div class="flex flex-wrap items-center gap-3">
+<label class="text-[12px] text-muted" for="opacity">Raster opacity</label>
+<input class="w-40" id="opacity" type="range" min="10" max="100" step="5" value="{{.Coverage.ViewOpacity}}">
+<span class="mono text-[12px]" id="opacity-value">{{.Coverage.ViewOpacity}} %</span>
+<label class="flex items-center gap-2 text-[12px] text-muted"><input id="circles" type="checkbox"{{if .Coverage.ViewCircles}} checked{{end}}> Range circles</label>
+</div>
+{{if .Others}}
+<div class="mt-3 border-t border-line-soft pt-2">
+<p class="mb-1 text-[12px] text-muted">{{if .Shared}}Also shown{{else}}Also show{{end}}</p>
+<div class="flex flex-col gap-1">
+{{range .Others}}
+<label class="flex flex-wrap items-center gap-2 text-[13px]">
+<input type="checkbox"{{if .Checked}} checked{{end}} data-overlay="{{.ID}}" data-url="{{.URL}}" data-north="{{.Bounds.North}}" data-south="{{.Bounds.South}}" data-east="{{.Bounds.East}}" data-west="{{.Bounds.West}}" data-lat="{{.Site.Lat}}" data-lon="{{.Site.Lon}}" data-range="{{.RangeM}}" data-name="{{.Site.Name}}">
+{{.Name}}<span class="mono text-[12px] text-muted">{{.Site.Name}}, {{printf "%.3f MHz" .FreqMHz}}</span>
+</label>
+{{end}}
+</div>
+<p class="hint">Same legend for all rasters; where they overlap, the best margin is shown.</p>
+</div>
+{{end}}
+</div>
+{{end}}
+</div>
+</div>
+{{if not .Shared}}
+<dialog class="modal" id="legend">
+<h2>Legend</h2>
+<form method="post" action="/coverages/{{.Coverage.ID}}/legend">
+<p class="hint">A cell takes the colour of the highest threshold its link margin reaches; below every threshold, or without data, it stays transparent. Leave a threshold empty to drop the row. The legend applies at once, also to the merged view and the report; nothing is recomputed.</p>
+<table class="kv">
+<thead><tr><th>Margin at least (dB)</th><th>Colour</th></tr></thead>
+{{range .LegendRows}}<tr><td><input class="input input-num w-28" name="min_{{.N}}" value="{{.Min}}" inputmode="decimal"></td><td><input class="color-input" type="color" name="color_{{.N}}" value="{{.CSS}}"></td></tr>
+{{end}}
+</table>
+<div class="form-actions">
+<button class="btn btn-primary">Save</button>
+<button class="btn" name="reset" value="1">Reset to defaults</button>
+<button class="btn" type="button" data-close="legend">Close</button>
+</div>
+</form>
+</dialog>
+<dialog class="modal" id="share" data-reopen>
+<h2>Share this coverage</h2>
+{{if .Coverage.ShareToken}}
+<p class="mb-1 mt-3 text-[12px] text-muted">Public link</p>
+<div class="flex flex-wrap items-center gap-3">
+<input class="input max-w-120" id="share-url" readonly value="{{.ShareURL}}">
+<button class="btn" type="button" data-copy="share-url">Copy</button>
+</div>
+<p class="hint">Anyone with this link sees this page without an account, until {{.Coverage.ShareExpires.Format "2006-01-02"}}.{{if .Others}} It shows the map as you have it here, including the rasters on top.{{end}}</p>
+<div class="form-actions">
+<form method="post" action="/coverages/{{.Coverage.ID}}/share"><button class="btn">Extend by 30 days</button></form>
+<form method="post" action="/coverages/{{.Coverage.ID}}/share/delete"><button class="btn btn-danger">Revoke</button></form>
+<button class="btn" type="button" data-close="share">Close</button>
+</div>
+{{else}}
+<p class="hint">Creates a link that shows this page to anyone without an account, for 30 days.{{if .Others}} It shows the map as you have it here, including the rasters on top.{{end}}</p>
+<div class="form-actions">
+<form method="post" action="/coverages/{{.Coverage.ID}}/share"><button class="btn btn-primary">Create public link</button></form>
+<button class="btn" type="button" data-close="share">Close</button>
+</div>
+{{end}}
+</dialog>
+{{end}}
+{{if .Coverage.ComputedAt}}
+<script>addEventListener('DOMContentLoaded',function(){cpCoverageOverlays(cpCoverageMap('map', {{.Coverage.Site}}, {{.Coverage.RangeM}}, '{{.Path}}/image.png?t={{.Coverage.ComputedAt.Unix}}', {{.Coverage.Bounds}}), {{.ViewURL}}, '{{.Path}}/composite.png')})</script>
+{{else}}
+<script>addEventListener('DOMContentLoaded',function(){cpCoverageOverlays(cpCoverageMap('map', {{.Coverage.Site}}, {{.Coverage.RangeM}}, null, null), {{.ViewURL}}, '{{.Path}}/composite.png')})</script>
+{{end}}
+{{if not .Shared}}<script>addEventListener('DOMContentLoaded',function(){cpDialogs();cpCopyFields()})</script>{{end}}
+{{if and (not .Shared) (or (eq .Coverage.Job.State "queued") (eq .Coverage.Job.State "running"))}}
+<script>addEventListener('DOMContentLoaded',function(){cpJobWatch('/coverages/{{.Coverage.ID}}/events', document.getElementById('job'), document.getElementById('job-badge'))})</script>
+{{end}}
+{{end}}

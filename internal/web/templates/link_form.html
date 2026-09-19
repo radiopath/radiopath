@@ -1,0 +1,49 @@
+{{define "section"}}links{{end}}
+{{define "head"}}
+<script src="{{asset "/static/forms.js"}}" defer></script>
+{{end}}
+{{define "content"}}
+<div class="page-head">
+<h1>{{if .Link.ID}}Edit link{{else}}New link{{end}}</h1>
+<div class="actions"><a class="btn" href="/links">Back</a></div>
+</div>
+{{if .Errors}}<div class="alert alert-error"><ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+{{if not .Sites}}<div class="alert alert-warn">Create at least two <a href="/sites/new">sites</a> first.</div>{{end}}
+<form class="sheet" method="post" action="{{if .Link.ID}}/links/{{.Link.ID}}{{else}}/links{{end}}">
+<fieldset>
+<legend>Link</legend>
+<label class="field"><span>Name</span><input class="input" name="name" value="{{.Link.Name}}" required></label>
+<label class="field"><span>Site A (TX)</span><select class="select" name="site_a_id">{{range .Sites}}<option value="{{.ID}}" {{if eq .ID $.Link.SiteAID}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label class="field"><span>Site B (RX)</span><select class="select" name="site_b_id">{{range .Sites}}<option value="{{.ID}}" {{if eq .ID $.Link.SiteBID}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label class="field"><span>Frequency (MHz)</span><input class="input input-num" name="frequency_mhz" value="{{.Form.frequency_mhz}}" required></label>
+<label class="field"><span>Extra path loss (dB){{template "tip" "Extra loss on top of the model: buildings, screening, or woods the canopy layer does not have. Trees at both ends are computed from the canopy layer (ITU-R P.833) when one is configured and shown on the detail page. Without one, a rule of thumb at 5 to 6 GHz is about 1 dB per metre of foliage, saturating near 30 to 40 dB behind woodland; a few dB at VHF. Best set from the difference between the measured and the predicted level below."}}</span><input class="input input-num" name="clutter_loss_db" value="{{.Form.clutter_loss_db}}"></label>
+<label class="field"><span>Polarization</span><select class="select" name="polarization"><option value="1" {{if eq .Link.Polarization 1}}selected{{end}}>vertical</option><option value="0" {{if eq .Link.Polarization 0}}selected{{end}}>horizontal</option></select></label>
+</fieldset>
+<fieldset>
+<legend>Transmitter (A)</legend>
+<label class="field"><span>TX power (dBm)</span><input class="input input-num" name="tx_power_dbm" value="{{.Form.tx_power_dbm}}" required></label>
+<label class="field"><span>Antenna gain (dBi)</span><input class="input input-num" name="tx_gain_dbi" value="{{.Form.tx_gain_dbi}}"></label>
+<label class="field"><span>Line loss (dB)</span><input class="input input-num" name="tx_line_loss_db" value="{{.Form.tx_line_loss_db}}"></label>
+<label class="field"><span>Pattern</span><select class="select" name="tx_antenna_id" data-gain-field="tx_gain_dbi"><option value="">omnidirectional</option>{{range .Antennas}}<option value="{{.ID}}" data-gain="{{printf "%.1f" .GainDBi}}" {{if isID .ID $.Link.TxAntennaID}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label class="field"><span>Main lobe azimuth (deg)</span><input class="input input-num" name="tx_azimuth_deg" value="{{.Form.tx_azimuth_deg}}" placeholder="towards B"></label>
+<label class="field"><span>Mechanical tilt (deg)</span><input class="input input-num" name="tx_tilt_deg" value="{{.Form.tx_tilt_deg}}" placeholder="0"></label>
+</fieldset>
+<fieldset>
+<legend>Receiver (B)</legend>
+<label class="field"><span>Antenna gain (dBi)</span><input class="input input-num" name="rx_gain_dbi" value="{{.Form.rx_gain_dbi}}"></label>
+<label class="field"><span>Line loss (dB)</span><input class="input input-num" name="rx_line_loss_db" value="{{.Form.rx_line_loss_db}}"></label>
+<label class="field"><span>Sensitivity (dBm)</span><input class="input input-num" name="rx_sensitivity_dbm" value="{{.Form.rx_sensitivity_dbm}}" required></label>
+<label class="field"><span>Pattern</span><select class="select" name="rx_antenna_id" data-gain-field="rx_gain_dbi"><option value="">omnidirectional</option>{{range .Antennas}}<option value="{{.ID}}" data-gain="{{printf "%.1f" .GainDBi}}" {{if isID .ID $.Link.RxAntennaID}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label class="field"><span>Main lobe azimuth (deg)</span><input class="input input-num" name="rx_azimuth_deg" value="{{.Form.rx_azimuth_deg}}" placeholder="towards A"></label>
+<label class="field"><span>Mechanical tilt (deg)</span><input class="input input-num" name="rx_tilt_deg" value="{{.Form.rx_tilt_deg}}" placeholder="0"></label>
+</fieldset>
+<p class="hint">An empty azimuth aims the antenna at the other site. The tilt is positive downwards; the elevation cut of the pattern is read at the take-off angle of the ray. The gain above is the main lobe gain; the pattern only takes away from it.</p>
+<fieldset>
+<legend>Measurement</legend>
+<label class="field"><span>Measured RX level (dBm)</span><input class="input input-num" name="measured_rx_dbm" value="{{.Form.measured_rx_dbm}}" placeholder="optional"></label>
+<p class="hint">The level actually read at site B once the link is up. The detail page shows how far the prediction is off.</p>
+</fieldset>
+<div class="form-actions"><button class="btn btn-primary">Save</button><a href="/links">Cancel</a></div>
+</form>
+<script>addEventListener('DOMContentLoaded',function(){cpAntennaGain()})</script>
+{{end}}

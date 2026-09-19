@@ -1,0 +1,72 @@
+{{define "section"}}admin{{end}}
+{{define "head"}}
+<script src="{{asset "/static/forms.js"}}" defer></script>
+{{end}}
+{{define "content"}}
+<div class="page-head">
+<h1>Users</h1>
+</div>
+{{if .Errors}}<div class="alert alert-error"><ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+{{if .Notice}}<div class="alert alert-info">{{.Notice}}</div>{{end}}
+{{if .PendingUser}}
+<form class="panel mb-4" method="post" action="/admin/users/{{.PendingUser}}/password">
+<p class="mb-2 text-[13px]">New password for <b>{{.PendingUser}}</b></p>
+<div class="flex flex-wrap items-center gap-3">
+<input class="input input-num max-w-[22rem]" id="pending-password" name="password" autocomplete="off" required>
+<button class="btn" type="button" data-generate="pending-password">Generate</button>
+<button class="btn btn-primary">Save</button>
+<a class="btn" href="/admin">Cancel</a>
+</div>
+<p class="hint">Generated in your browser. Copy it now, or type your own; at least 10 characters. It is stored as a bcrypt hash and cannot be read back.</p>
+</form>
+{{end}}
+<div class="panel mb-4 flex flex-wrap items-center gap-3">
+<span class="text-[13px]">Logins</span>
+{{if .Maintenance}}
+<span class="badge badge-failed">maintenance</span>
+<form method="post" action="/admin/maintenance"><input type="hidden" name="on" value="false"><button class="btn btn-primary">Allow logins again</button></form>
+{{else}}
+<span class="badge badge-done">open</span>
+<form method="post" action="/admin/maintenance" onsubmit="return confirm('Block all logins? Sessions that are already open keep working.')"><input type="hidden" name="on" value="true"><button class="btn">Maintenance mode</button></form>
+{{end}}
+<form class="ml-auto" method="post" action="/admin/sessions/delete" onsubmit="return confirm('Log out every user?')"><button class="btn btn-danger">Revoke all sessions</button></form>
+</div>
+<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+<div>
+<div class="table-wrap">
+<table class="table">
+<thead><tr><th>Name</th><th>Email</th><th>Created</th><th class="num">Sessions</th><th>Last login</th><th></th></tr></thead>
+<tbody>
+{{range .Users}}
+<tr>
+<td>{{.Name}}</td>
+<td class="text-[12px]">{{if .Email}}{{.Email}}{{else}}<span class="text-muted">&mdash;</span>{{end}}{{if not .Verified}} <span class="badge badge-queued">unconfirmed</span>{{end}}</td>
+<td class="mono text-[12px]">{{.CreatedAt.Format "2006-01-02"}}</td>
+<td class="num">{{.Sessions}}</td>
+<td class="mono text-[12px]">{{if .LastLogin}}{{.LastLogin.Format "2006-01-02 15:04"}}{{else}}<span class="text-muted">&mdash;</span>{{end}}</td>
+<td class="row-actions">
+<a class="btn" href="/admin/users/{{.Name}}/password">Set password</a>
+<form method="post" action="/admin/users/{{.Name}}/sessions"><button class="btn" {{if not .Sessions}}disabled{{end}}>Revoke</button></form>
+<form method="post" action="/admin/users/{{.Name}}/delete" onsubmit="return confirm('Delete user {{.Name}}? Their sessions, sites, links, coverages and antennas go with them.')"><button class="btn btn-danger">Delete</button></form>
+</td>
+</tr>
+{{else}}
+<tr><td colspan="6" class="empty">No users yet. Create the first one on the right.</td></tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{if .Users}}<p class="table-note">{{len .Users}} user{{if ne (len .Users) 1}}s{{end}}</p>{{end}}
+</div>
+<form class="sheet" method="post" action="/admin/users">
+<fieldset>
+<legend>New user</legend>
+<label class="field field-narrow"><span>Name</span><input class="input" name="name" value="{{.NewName}}" autocomplete="off" required></label>
+<label class="field field-narrow"><span>Password</span><input class="input input-num" id="new-password" name="password" autocomplete="off" required></label>
+</fieldset>
+<div class="form-actions"><button class="btn btn-primary">Create</button><button class="btn" type="button" data-generate="new-password">Generate</button></div>
+<p class="hint">Maintenance blocks new logins and shows a notice on the login page; open sessions keep working until you revoke them. The password is suggested by your browser, overwrite it if you like. 3 to 32 characters for the name (letters, digits, . _ -), at least 10 for the password.</p>
+</form>
+</div>
+<script>addEventListener('DOMContentLoaded',function(){cpPasswordFields()})</script>
+{{end}}

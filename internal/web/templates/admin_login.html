@@ -1,0 +1,12 @@
+{{define "section"}}admin{{end}}
+{{define "content"}}
+<div class="mx-auto mt-10 w-full max-w-[26rem]">
+<h1 class="mb-4">Admin</h1>
+{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+<form class="sheet" method="post" action="/admin/login">
+<label class="field field-narrow"><span>Token</span><input class="input input-num" name="token" type="password" autocomplete="off" autofocus required></label>
+<div class="form-actions"><button class="btn btn-primary">Enter</button></div>
+</form>
+<p class="hint">The token comes from <span class="mono">RADIOPATH_ADMIN_TOKEN</span> in the server environment. It is not a user account, and this panel keeps working even when no user is left.</p>
+</div>
+{{end}}

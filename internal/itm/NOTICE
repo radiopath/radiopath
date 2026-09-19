@@ -1,0 +1,17 @@
+This package is a Go port of the Irregular Terrain Model (ITM) v1.3
+developed by the Institute for Telecommunication Sciences (ITS) of the
+National Telecommunications and Information Administration (NTIA),
+https://github.com/NTIA/itm
+
+The original C++ software was developed by employees of NTIA and is not
+subject to copyright protection within the United States. NTIA grants a
+worldwide, royalty-free, irrevocable right to use, modify and distribute
+the software and derivative works, provided that NTIA is acknowledged.
+
+Modifications (2026-09, Fabian Berg, HB9HIL):
+  - Translated from C++ to Go, one Go file per original source file.
+  - Area mode (itm_area.cpp, InitializeArea.cpp) not yet ported.
+  - Error codes mapped to Go error values; warning flags kept as a bitmask.
+  - testdata/p2p.csv and testdata/pfls.csv are the unmodified NTIA test vectors.
+
+The original software is provided "AS IS" without warranty of any kind.

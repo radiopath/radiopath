@@ -1,0 +1,36 @@
+{{define "section"}}coverages{{end}}
+{{define "content"}}
+<div class="page-head">
+<h1>Coverage</h1>
+<div class="actions">{{if .Sites}}<a class="btn btn-primary" href="/coverages/new">{{template "icon-plus"}}New coverage</a>{{else}}<button class="btn btn-primary" disabled title="A coverage needs a site">{{template "icon-plus"}}New coverage</button>{{end}}</div>
+</div>
+<div class="table-wrap">
+<table class="table">
+<thead><tr><th>Name</th><th>Site (TX)</th><th class="num">Frequency</th><th class="num">Range</th><th>Computed</th><th></th></tr></thead>
+<tbody>
+{{range .Coverages}}
+<tr>
+<td><a href="/coverages/{{.ID}}">{{.Name}}</a></td>
+<td>{{.Site.Name}}</td>
+<td class="num">{{printf "%.3f MHz" .FreqMHz}}</td>
+<td class="num">{{printf "%.1f km" (divKm .RangeM)}}</td>
+<td>
+{{if or (eq .Job.State "queued") (eq .Job.State "running")}}<span class="badge badge-{{.Job.State}}">{{.Job.State}}</span>
+{{else if eq .Job.State "failed"}}<span class="badge badge-failed">failed</span>
+{{else if .ComputedAt}}<span class="mono text-[12px]">{{.ComputedAt.Format "2006-01-02 15:04"}}</span>
+{{else}}<span class="muted">not yet</span>{{end}}
+</td>
+<td class="row-actions">
+<a class="btn" href="/coverages/{{.ID}}/edit">Edit</a>
+<a class="btn" href="/coverages/new?from={{.ID}}">Duplicate</a>
+<form method="post" action="/coverages/{{.ID}}/delete" onsubmit="return confirm('Delete coverage {{.Name}}?')"><button class="btn btn-danger">Delete</button></form>
+</td>
+</tr>
+{{else}}
+<tr><td colspan="6" class="empty">{{if .Sites}}No coverages yet. <a href="/coverages/new">Add the first one</a>.{{else}}A coverage starts at a site. <a href="/sites/new">Create one</a> first.{{end}}</td></tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{if .Coverages}}<p class="table-note">{{len .Coverages}} coverage{{if ne (len .Coverages) 1}}s{{end}}</p>{{end}}
+{{end}}

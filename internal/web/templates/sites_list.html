@@ -1,0 +1,42 @@
+{{define "section"}}sites{{end}}
+{{define "head"}}
+<link rel="stylesheet" href="{{asset "/static/leaflet/leaflet.css"}}">
+<script src="{{asset "/static/leaflet/leaflet.js"}}" defer></script>
+<script src="{{asset "/static/map.js"}}" defer></script>
+{{end}}
+{{define "content"}}
+<div class="page-head">
+<h1>Sites</h1>
+<div class="actions"><a class="btn btn-primary" href="/sites/new">{{template "icon-plus"}}New site</a></div>
+</div>
+{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+<div>
+<div class="table-wrap">
+<table class="table">
+<thead><tr><th>Name</th><th class="num">Latitude</th><th class="num">Longitude</th><th class="num">Antenna</th><th></th></tr></thead>
+<tbody>
+{{range .Sites}}
+<tr>
+<td><a href="/sites/{{.ID}}">{{.Name}}</a></td>
+<td class="num">{{printf "%.5f" .Lat}}</td>
+<td class="num">{{printf "%.5f" .Lon}}</td>
+<td class="num">{{printf "%.1f m" .AntennaHeightM}}</td>
+<td class="row-actions">
+<a class="btn" href="/sites/{{.ID}}">Edit</a>
+<a class="btn" href="/sites/new?from={{.ID}}">Duplicate</a>
+<form method="post" action="/sites/{{.ID}}/delete" onsubmit="return confirm('Delete site {{.Name}}?')"><button class="btn btn-danger">Delete</button></form>
+</td>
+</tr>
+{{else}}
+<tr><td colspan="5" class="empty">No sites yet. <a href="/sites/new">Add the first one</a>.</td></tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{if .Sites}}<p class="table-note">{{len .Sites}} site{{if ne (len .Sites) 1}}s{{end}}</p>{{end}}
+</div>
+<div id="map"></div>
+</div>
+<script>addEventListener('DOMContentLoaded',function(){cpSitesMap('map', {{.Sites}})})</script>
+{{end}}

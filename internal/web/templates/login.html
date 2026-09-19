@@ -1,0 +1,39 @@
+{{define "section"}}login{{end}}
+{{define "content"}}
+<div class="mx-auto mt-10 grid w-full max-w-4xl gap-8 md:grid-cols-[26rem_minmax(0,1fr)]">
+<div>
+<h1 class="mb-4">Log in</h1>
+{{if .Maintenance}}
+<div class="alert alert-warn"><b>Maintenance</b><br>Radiopath is closed for maintenance. Logins are disabled, please try again later.</div>
+{{else}}
+{{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
+{{if .Notice}}<div class="alert alert-info">{{.Notice}}</div>{{end}}
+{{if .Unverified}}
+<form class="sheet" method="post" action="/verify/resend">
+<input type="hidden" name="name" value="{{.Unverified}}">
+<div class="form-actions"><button class="btn btn-primary">Resend confirmation mail</button><a href="/login">Back to login</a></div>
+</form>
+{{else}}
+<form class="sheet" method="post" action="/login">
+<input type="hidden" name="next" value="{{.Next}}">
+<label class="field field-narrow"><span>User name</span><input class="input" name="name" autocomplete="username" autofocus required></label>
+<label class="field field-narrow"><span>Password</span><input class="input" name="password" type="password" autocomplete="current-password" required></label>
+<div class="form-actions"><button class="btn btn-primary">Log in</button>{{if .Registration}}<a href="/register">Create an account</a>{{end}}{{if .Forgot}}<a href="/forgot">Forgot password?</a>{{end}}</div>
+</form>
+{{end}}
+{{if not .Registration}}<p class="hint">Registration is closed while the service is under development.</p>{{end}}
+{{end}}
+</div>
+<div class="text-[13px] leading-relaxed text-muted md:mt-11">
+<h2 class="text-fg">What is Radiopath?</h2>
+<p class="mt-2">Radiopath is an independent clone of <i>Radio Mobile Online</i> (Roger Coudé, VE2DBE): radio link and coverage planning for amateur radio, rf links and similar point-to-point or point-to-area systems.</p>
+<ul class="mt-3 list-disc space-y-1 pl-4">
+<li><b class="text-fg">Point-to-point links</b>: terrain profile from Copernicus GLO-30 elevation data (30 m, worldwide), path loss with the Longley-Rice / ITM model, first Fresnel zone, link budget with real antenna patterns, and vegetation loss where a link ends in woodland (ITU-R P.833).</li>
+<li><b class="text-fg">Area coverage</b>: the link margin around a transmitter as a raster on the map, computed in the background.</li>
+<li><b class="text-fg">Reports</b>: every calculation as a one-page PDF.</li>
+<li><b class="text-fg">Sharing</b>: publish a calculation as a read-only link that works without an account, for 30 days.</li>
+</ul>
+<div class="alert alert-info mt-4"><b>Under development.</b> The models are still being checked against measured links, so results can be off and may change between versions. Accounts and stored projects can be reset without notice.</div>
+</div>
+</div>
+{{end}}

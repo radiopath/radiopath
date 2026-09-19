@@ -1,0 +1,14 @@
+/radiopath
+/dem/
+/canopy/
+*.hgt
+*.hgt.zip
+*.chm
+/.env
+/dem-sync.log
+/canopy-sync.log
+/node_modules/
+/tmp/
+/cypress/screenshots/
+/cypress/downloads/
+/graphify-out/

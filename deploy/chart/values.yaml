@@ -1,0 +1,104 @@
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# Existing Secret in the release namespace; every key becomes an environment variable (DATABASE_URL, S3 keys, SMTP password).
+envFromSecret: ""
+
+# RADIOPATH_WORKERS and RADIOPATH_REDIS_URL are set by the chart.
+env:
+  RADIOPATH_TRUST_PROXY: "true"
+  RADIOPATH_REGISTRATION: "false"
+  RADIOPATH_SMTP_HOST: <smtp-host>
+  RADIOPATH_SMTP_PORT: "587"
+  RADIOPATH_SMTP_USER: <smtp-user>
+  RADIOPATH_MAIL_FROM: <from-address>
+  RADIOPATH_DEM_S3_ENDPOINT: <s3-endpoint>
+  RADIOPATH_DEM_S3_BUCKET: <s3-bucket>
+  RADIOPATH_DEM_S3_PREFIX: srtm1/
+  RADIOPATH_CANOPY_S3_PREFIX: canopy1/
+
+web:
+  replicas: 2
+  env:
+    RADIOPATH_DEM_CACHE_TILES: "8"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+worker:
+  replicas: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 100
+  # Also route Service traffic to worker pods.
+  serveWeb: false
+  workers: 1
+  env:
+    RADIOPATH_DEM_CACHE_TILES: "16"
+  resources:
+    requests:
+      cpu: "1"
+      memory: 512Mi
+    limits:
+      cpu: "4"
+      memory: 2Gi
+
+valkey:
+  enabled: true
+  image:
+    repository: valkey/valkey
+    tag: "9.1-alpine"
+    pullPolicy: IfNotPresent
+  maxmemory: 512mb
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 620Mi
+
+service:
+  port: 80
+
+# Needs the Prometheus operator CRD.
+metrics:
+  podMonitor:
+    enabled: false
+    labels: {}
+
+ingress:
+  enabled: true
+  className: traefik
+  hosts: []
+  # One of ingress.hosts; every other host answers 301 to it. Empty: every host serves the app.
+  canonicalHost: ""
+  annotations: {}
+  tls:
+    enabled: true
+    # cert-manager ClusterIssuer. Empty: Traefik's default certificate.
+    clusterIssuer: letsencrypt
+    secretName: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+priorityClassName: ""

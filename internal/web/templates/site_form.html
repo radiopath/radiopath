@@ -1,0 +1,28 @@
+{{define "section"}}sites{{end}}
+{{define "head"}}
+<link rel="stylesheet" href="{{asset "/static/leaflet/leaflet.css"}}">
+<script src="{{asset "/static/leaflet/leaflet.js"}}" defer></script>
+<script src="{{asset "/static/map.js"}}" defer></script>
+{{end}}
+{{define "content"}}
+<div class="page-head">
+<h1>{{if .Site.ID}}Edit site{{else}}New site{{end}}</h1>
+<div class="actions"><a class="btn" href="/sites">Back to sites</a></div>
+</div>
+{{if .Errors}}<div class="alert alert-error"><ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+<form class="sheet" method="post" action="{{if .Site.ID}}/sites/{{.Site.ID}}{{else}}/sites{{end}}">
+<fieldset>
+<legend>Site</legend>
+<label class="field"><span>Name</span><input class="input" name="name" value="{{.Site.Name}}" required></label>
+<label class="field"><span>Latitude (deg, WGS84)</span><input class="input input-num" name="lat" value="{{.Form.lat}}" required></label>
+<label class="field"><span>Longitude (deg, WGS84)</span><input class="input input-num" name="lon" value="{{.Form.lon}}" required></label>
+<label class="field"><span>Antenna height above ground (m)</span><input class="input input-num" name="antenna_height_m" value="{{.Form.antenna_height_m}}" required></label>
+</fieldset>
+<div class="form-actions"><button class="btn btn-primary">Save</button><a href="/sites">Cancel</a></div>
+<p class="hint">Click the map to set the position, or drag the marker.</p>
+</form>
+<div id="map"></div>
+</div>
+<script>addEventListener('DOMContentLoaded',function(){cpSiteFormMap('map', document.querySelector('[name=lat]'), document.querySelector('[name=lon]'))})</script>
+{{end}}

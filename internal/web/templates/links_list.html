@@ -1,0 +1,30 @@
+{{define "section"}}links{{end}}
+{{define "content"}}
+<div class="page-head">
+<h1>Links</h1>
+<div class="actions">{{if ge .Sites 2}}<a class="btn btn-primary" href="/links/new">{{template "icon-plus"}}New link</a>{{else}}<button class="btn btn-primary" disabled title="A link needs two sites">{{template "icon-plus"}}New link</button>{{end}}</div>
+</div>
+<div class="table-wrap">
+<table class="table">
+<thead><tr><th>Name</th><th>Site A (TX)</th><th>Site B (RX)</th><th class="num">Frequency</th><th></th></tr></thead>
+<tbody>
+{{range .Links}}
+<tr>
+<td><a href="/links/{{.ID}}">{{.Name}}</a></td>
+<td>{{.SiteA.Name}}</td>
+<td>{{.SiteB.Name}}</td>
+<td class="num">{{printf "%.3f MHz" .FreqMHz}}</td>
+<td class="row-actions">
+<a class="btn" href="/links/{{.ID}}/edit">Edit</a>
+<a class="btn" href="/links/new?from={{.ID}}">Duplicate</a>
+<form method="post" action="/links/{{.ID}}/delete" onsubmit="return confirm('Delete link {{.Name}}?')"><button class="btn btn-danger">Delete</button></form>
+</td>
+</tr>
+{{else}}
+<tr><td colspan="5" class="empty">{{if ge .Sites 2}}No links yet. <a href="/links/new">Add the first one</a>.{{else if .Sites}}A link needs two sites. <a href="/sites/new">Add the second one</a> first.{{else}}A link connects two sites. <a href="/sites/new">Create your sites</a> first.{{end}}</td></tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{if .Links}}<p class="table-note">{{len .Links}} link{{if ne (len .Links) 1}}s{{end}}</p>{{end}}
+{{end}}

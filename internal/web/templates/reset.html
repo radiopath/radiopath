@@ -1,0 +1,17 @@
+{{define "section"}}login{{end}}
+{{define "content"}}
+<div class="mx-auto mt-10 w-full max-w-[26rem]">
+<h1 class="mb-4">Choose a new password</h1>
+{{if .Errors}}<div class="alert alert-error"><ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+{{if .Token}}
+<form class="sheet" method="post" action="/reset/{{.Token}}">
+<label class="field field-narrow"><span>New password</span><input class="input" name="password" type="password" autocomplete="new-password" minlength="10" autofocus required></label>
+<label class="field field-narrow"><span>Repeat</span><input class="input" name="password2" type="password" autocomplete="new-password" minlength="10" required></label>
+<div class="form-actions"><button class="btn btn-primary">Set password</button></div>
+</form>
+<p class="hint">At least 10 characters. Every open session of the account is logged out.</p>
+{{else}}
+<p class="hint"><a href="/forgot">Request a new link</a></p>
+{{end}}
+</div>
+{{end}}

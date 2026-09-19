@@ -1,0 +1,6 @@
+apiVersion: v2
+name: radiopath
+description: Radiopath web and worker pods, Valkey tile cache, Traefik ingress. Database and DEM storage are external.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

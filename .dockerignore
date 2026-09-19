@@ -1,0 +1,8 @@
+dem/
+*.hgt
+*.hgt.zip
+radiopath
+.git/
+deploy/
+.github/
+node_modules/

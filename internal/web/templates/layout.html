@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radiopath</title>
+<link rel="icon" href="{{asset "/static/favicon.svg"}}" type="image/svg+xml">
+<script>(function(){try{var t=localStorage.getItem("cp-theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}})()</script>
+<link rel="stylesheet" href="{{asset "/static/app.css"}}">
+<script src="{{asset "/static/theme.js"}}" defer></script>
+{{block "head" .}}{{end}}
+</head>
+<body class="section-{{block "section" .}}{{end}}">
+<header class="app-header">
+<a class="brand" href="/">Radiopath</a>
+{{if .User}}
+<nav class="app-nav">
+<a class="nav-tab" href="/sites">Sites</a>
+<a class="nav-tab" href="/links">Links</a>
+<a class="nav-tab" href="/coverages">Coverage</a>
+<a class="nav-tab" href="/antennas">Antennas</a>
+</nav>
+{{end}}
+<div class="ml-auto flex items-center gap-3">
+<button class="btn btn-icon" type="button" id="theme-toggle" title="Light / dark" aria-label="Light / dark">{{template "icon-sun"}}{{template "icon-moon"}}</button>
+{{if .User}}
+<a class="btn" href="/account" title="Account">{{.User}}</a>
+<form method="post" action="/logout"><button class="btn">Logout</button></form>
+{{else if .Admin}}
+<span class="badge badge-queued">admin</span>
+<form method="post" action="/admin/logout"><button class="btn">Logout</button></form>
+{{end}}
+</div>
+</header>
+<main class="app-main">
+{{template "content" .}}
+</main>
+<footer class="app-footer">Radiopath by Fabian Berg, HB9HIL &middot; <a target="_blank" href="https://github.com/radiopath/radiopath">Source</a> &middot; ITM/Longley-Rice on Copernicus GLO-30 terrain &middot; map data &copy; OpenStreetMap contributors{{with version}} &middot; <span class="mono">{{.}}</span>{{end}}</footer>
+<script>addEventListener('DOMContentLoaded',function(){cpTheme(document.getElementById('theme-toggle'))})</script>
+</body>
+</html>

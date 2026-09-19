@@ -1,0 +1,47 @@
+{{define "section"}}coverages{{end}}
+{{define "head"}}
+<script src="{{asset "/static/forms.js"}}" defer></script>
+{{end}}
+{{define "content"}}
+<div class="page-head">
+<h1>{{if .Coverage.ID}}Edit coverage{{else}}New coverage{{end}}</h1>
+<div class="actions"><a class="btn" href="/coverages">Back</a></div>
+</div>
+{{if .Errors}}<div class="alert alert-error"><ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+{{if not .Sites}}<div class="alert alert-warn">Create a <a href="/sites/new">site</a> first.</div>{{end}}
+<form class="sheet" method="post" action="{{if .Coverage.ID}}/coverages/{{.Coverage.ID}}{{else}}/coverages{{end}}">
+{{if not .Coverage.ID}}<input type="hidden" name="legend" value="{{.Form.legend}}">{{end}}
+<fieldset>
+<legend>Coverage</legend>
+<label class="field"><span>Name</span><input class="input" name="name" value="{{.Coverage.Name}}" required></label>
+<label class="field"><span>Site (TX)</span><select class="select" name="site_id">{{range .Sites}}<option value="{{.ID}}" {{if eq .ID $.Coverage.SiteID}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label class="field"><span>Frequency (MHz)</span><input class="input input-num" name="frequency_mhz" value="{{.Form.frequency_mhz}}" required></label>
+<label class="field"><span>Polarization</span><select class="select" name="polarization"><option value="1" {{if eq .Coverage.Polarization 1}}selected{{end}}>vertical</option><option value="0" {{if eq .Coverage.Polarization 0}}selected{{end}}>horizontal</option></select></label>
+</fieldset>
+<fieldset>
+<legend>Transmitter</legend>
+<label class="field"><span>TX power (dBm)</span><input class="input input-num" name="tx_power_dbm" value="{{.Form.tx_power_dbm}}" required></label>
+<label class="field"><span>Antenna gain (dBi)</span><input class="input input-num" name="tx_gain_dbi" value="{{.Form.tx_gain_dbi}}"></label>
+<label class="field"><span>Line loss (dB)</span><input class="input input-num" name="tx_line_loss_db" value="{{.Form.tx_line_loss_db}}"></label>
+<label class="field"><span>Pattern</span><select class="select" name="tx_antenna_id" data-gain-field="tx_gain_dbi"><option value="">omnidirectional</option>{{range .Antennas}}<option value="{{.ID}}" data-gain="{{printf "%.1f" .GainDBi}}" {{if isID .ID $.Coverage.TxAntennaID}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label class="field"><span>Main lobe azimuth (deg)</span><input class="input input-num" name="tx_azimuth_deg" value="{{.Form.tx_azimuth_deg}}"></label>
+<label class="field"><span>Mechanical tilt (deg)</span><input class="input input-num" name="tx_tilt_deg" value="{{.Form.tx_tilt_deg}}" placeholder="0"></label>
+<p class="hint">The gain above is the main lobe gain; the pattern only takes away from it. 0 deg is north, the tilt is positive downwards.</p>
+</fieldset>
+<fieldset>
+<legend>Receiver (mobile / portable)</legend>
+<label class="field"><span>Antenna height above ground (m)</span><input class="input input-num" name="rx_height_m" value="{{.Form.rx_height_m}}" required></label>
+<label class="field"><span>Antenna gain (dBi)</span><input class="input input-num" name="rx_gain_dbi" value="{{.Form.rx_gain_dbi}}"></label>
+<label class="field"><span>Line loss (dB)</span><input class="input input-num" name="rx_line_loss_db" value="{{.Form.rx_line_loss_db}}"></label>
+<label class="field"><span>Sensitivity (dBm)</span><input class="input input-num" name="rx_sensitivity_dbm" value="{{.Form.rx_sensitivity_dbm}}" required></label>
+</fieldset>
+<fieldset>
+<legend>Area</legend>
+<label class="field"><span>Range (km)</span><input class="input input-num" name="range_km" value="{{.Form.range_km}}" required></label>
+<label class="field"><span>Resolution (m)</span><input class="input input-num" name="resolution_m" value="{{.Form.resolution_m}}" required></label>
+<p class="hint">Range / resolution must not exceed 1000 pixels per radius. Radials are spaced one pixel apart at the outer edge (360 to 3600); compute time grows roughly with (range / resolution)&sup3;.</p>
+</fieldset>
+<div class="form-actions"><button class="btn btn-primary">Save</button><a href="/coverages">Cancel</a></div>
+</form>
+<script>addEventListener('DOMContentLoaded',function(){cpAntennaGain()})</script>
+{{end}}

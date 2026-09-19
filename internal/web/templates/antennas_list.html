@@ -1,0 +1,83 @@
+{{define "section"}}antennas{{end}}
+{{define "head"}}
+<script src="{{asset "/static/forms.js"}}" defer></script>
+{{end}}
+{{define "content"}}
+<div class="page-head">
+<h1>Antennas</h1>
+</div>
+{{if and .Errors (not .Edit)}}<div class="alert alert-error"><ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+<div>
+<div class="table-wrap">
+<table class="table">
+<thead><tr><th>Azimuth</th><th>Elevation</th><th>Name</th><th class="num">Gain</th><th class="num">Front/back</th><th class="num">Frequency</th><th></th></tr></thead>
+<tbody>
+{{range .Antennas}}
+<tr>
+<td class="w-28">{{.Plot}}</td>
+<td class="w-28">{{if .PlotV}}{{.PlotV}}{{else}}<span class="text-muted" title="mirrors the azimuth cut">&mdash;</span>{{end}}</td>
+<td>{{.Name}}{{if .Source}}<br><span class="mono text-[12px] text-muted">{{.Source}}</span>{{end}}</td>
+<td class="num">{{printf "%.1f dBi" .GainDBi}}</td>
+<td class="num">{{printf "%.1f dB" .FrontDB}}</td>
+<td class="num">{{if .FreqMHz}}{{printf "%.0f MHz" .FreqMHz}}{{else}}<span class="text-muted">&mdash;</span>{{end}}</td>
+<td class="row-actions">
+{{if .Manual}}<button class="btn" type="button" data-dialog="edit-{{.ID}}">Edit</button>{{end}}
+<form method="post" action="/antennas/{{.ID}}/delete" onsubmit="return confirm('Delete antenna {{.Name}}? Links and coverages using it become omnidirectional.')"><button class="btn btn-danger">Delete</button></form>
+</td>
+</tr>
+{{else}}
+<tr><td colspan="7" class="empty">No antennas yet. Upload an MSI Planet file to get started.</td></tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{if .Antennas}}<p class="table-note">{{len .Antennas}} antenna{{if ne (len .Antennas) 1}}s{{end}}</p>{{end}}
+</div>
+<form class="sheet" method="post" action="/antennas" enctype="multipart/form-data">
+<fieldset>
+<legend>Import pattern</legend>
+<label class="field field-narrow"><span>File</span><input class="input" type="file" name="file" accept=".msi,.pln,.ant,.txt" required></label>
+<label class="field field-narrow"><span>Name</span><input class="input" name="name" placeholder="from the file"></label>
+</fieldset>
+<div class="form-actions"><button class="btn btn-primary">Import</button></div>
+<p class="hint">MSI Planet format (<span class="mono">.msi</span>, <span class="mono">.pln</span>), as shipped by antenna manufacturers. The horizontal and, when present, the vertical pattern are used: 360 attenuation values in dB below the main lobe each. Without a vertical block the elevation cut mirrors the azimuth cut. A gain without a unit is read as dBd.</p>
+</form>
+
+<form class="sheet mt-5" method="post" action="/antennas/manual">
+<fieldset>
+<legend>Or describe one</legend>
+<label class="field field-narrow"><span>Name</span><input class="input" name="name" required></label>
+<label class="field field-narrow"><span>Gain (dBi)</span><input class="input input-num" name="gain_dbi" value="0" required></label>
+<label class="field field-narrow"><span>Beamwidth (deg)</span><input class="input input-num" name="beamwidth_deg" value="65" required></label>
+<label class="field field-narrow"><span>Vertical beamwidth (deg)</span><input class="input input-num" name="v_beamwidth_deg" placeholder="same as horizontal"></label>
+<label class="field field-narrow"><span>Front-to-back (dB)</span><input class="input input-num" name="front_back_db" value="25"></label>
+<label class="field field-narrow"><span>Frequency (MHz)</span><input class="input input-num" name="freq_mhz" placeholder="optional"></label>
+</fieldset>
+<div class="form-actions"><button class="btn btn-primary">Create</button></div>
+<p class="hint">Builds the usual sector shape: 12 (angle / beamwidth)&sup2; dB, capped at the front-to-back ratio. The beamwidth is the 3 dB width, 360 deg gives an omni; the vertical beamwidth shapes the elevation cut the same way. The front-to-back ratio is also the floor: nothing outside the main lobe, in azimuth or elevation, is attenuated more than that. Good enough for planning, not a substitute for the manufacturer's file.</p>
+</form>
+</div>
+{{range .Antennas}}{{if .Manual}}
+<dialog class="modal" id="edit-{{.ID}}"{{if eq .ID $.Edit}} data-open{{end}}>
+<h2>Edit antenna</h2>
+{{if and $.Errors (eq .ID $.Edit)}}<div class="alert alert-error"><ul>{{range $.Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<form method="post" action="/antennas/{{.ID}}">
+<fieldset>
+<label class="field field-narrow"><span>Name</span><input class="input" name="name" value="{{.Form.name}}" required></label>
+<label class="field field-narrow"><span>Gain (dBi)</span><input class="input input-num" name="gain_dbi" value="{{.Form.gain_dbi}}" required></label>
+<label class="field field-narrow"><span>Beamwidth (deg)</span><input class="input input-num" name="beamwidth_deg" value="{{.Form.beamwidth_deg}}" required></label>
+<label class="field field-narrow"><span>Vertical beamwidth (deg)</span><input class="input input-num" name="v_beamwidth_deg" value="{{.Form.v_beamwidth_deg}}" placeholder="same as horizontal"></label>
+<label class="field field-narrow"><span>Front-to-back (dB)</span><input class="input input-num" name="front_back_db" value="{{.Form.front_back_db}}"></label>
+<label class="field field-narrow"><span>Frequency (MHz)</span><input class="input input-num" name="freq_mhz" value="{{.Form.freq_mhz}}" placeholder="optional"></label>
+</fieldset>
+<p class="hint">Links and coverages using this antenna take over the new gain and pattern. A computed coverage keeps its result until you recompute it.</p>
+<div class="form-actions">
+<button class="btn btn-primary">Save</button>
+<button class="btn" type="button" data-close="edit-{{.ID}}">Close</button>
+</div>
+</form>
+</dialog>
+{{end}}{{end}}
+<script>addEventListener('DOMContentLoaded',function(){cpDialogs()})</script>
+{{end}}

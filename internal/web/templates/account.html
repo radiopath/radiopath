@@ -1,0 +1,21 @@
+{{define "section"}}account{{end}}
+{{define "content"}}
+<div class="mx-auto mt-10 w-full max-w-[26rem]">
+<h1 class="mb-4">Account</h1>
+{{if .Notice}}<div class="alert alert-info">{{.Notice}}</div>{{end}}
+{{if .Errors}}<div class="alert alert-error"><ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<form class="sheet" method="post" action="/account/email">
+<label class="field field-narrow"><span>User name</span><input class="input" value="{{.User}}" disabled></label>
+<label class="field field-narrow"><span>Email</span><input class="input" name="email" type="email" value="{{.Email}}" autocomplete="email" required></label>
+<div class="form-actions"><button class="btn btn-primary">Change address</button></div>
+</form>
+<p class="hint">{{if .Email}}A new address takes effect once you open the confirmation link we send there. Password reset mails go to the confirmed address.{{else}}No address on file: without one there is no password reset.{{end}}</p>
+<form class="sheet mt-4" method="post" action="/account/password">
+<label class="field field-narrow"><span>Current password</span><input class="input" name="current" type="password" autocomplete="current-password" required></label>
+<label class="field field-narrow"><span>New password</span><input class="input" name="password" type="password" autocomplete="new-password" minlength="10" required></label>
+<label class="field field-narrow"><span>Repeat</span><input class="input" name="password2" type="password" autocomplete="new-password" minlength="10" required></label>
+<div class="form-actions"><button class="btn btn-primary">Change password</button></div>
+</form>
+<p class="hint">At least 10 characters. Changing it logs out every other device.</p>
+</div>
+{{end}}

@@ -1,0 +1,15 @@
+{{define "section"}}login{{end}}
+{{define "content"}}
+<div class="mx-auto mt-10 w-full max-w-[26rem]">
+<h1 class="mb-4">Register</h1>
+{{if .Errors}}<div class="alert alert-error"><ul>{{range .Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<form class="sheet" method="post" action="/register">
+<label class="field field-narrow"><span>User name</span><input class="input" name="name" value="{{.Name}}" autocomplete="username" autofocus required></label>
+<label class="field field-narrow"><span>Email</span><input class="input" name="email" type="email" value="{{.Email}}" autocomplete="email" required></label>
+<label class="field field-narrow"><span>Password</span><input class="input" name="password" type="password" autocomplete="new-password" minlength="10" required></label>
+<label class="field field-narrow"><span>Repeat password</span><input class="input" name="password2" type="password" autocomplete="new-password" minlength="10" required></label>
+<div class="form-actions"><button class="btn btn-primary">Create account</button><a href="/login">Back to login</a></div>
+</form>
+<p class="hint">3 to 32 characters for the name (letters, digits, . _ -), at least 10 for the password. We mail a confirmation link to the address; the account opens once you follow it.</p>
+</div>
+{{end}}

@@ -1,0 +1,7 @@
+Release "{{ .Release.Name }}" deployed in namespace {{ .Release.Namespace }}.
+{{- range .Values.ingress.hosts }}
+  https://{{ . }}
+{{- end }}
+
+Image: {{ include "radiopath.image" . }}
+Users: kubectl -n {{ .Release.Namespace }} exec deploy/{{ .Release.Name }} -- /radiopath users
