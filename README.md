@@ -408,16 +408,18 @@ PodMonitors by label, set `metrics.podMonitor.labels`.
 
 ## Kubernetes
 
-The Helm chart in `deploy/chart` renders web pods (`RADIOPATH_WORKERS=0`,
+The Helm chart in [radiopath/helmchart](https://github.com/radiopath/helmchart)
+renders web pods (`RADIOPATH_WORKERS=0`,
 behind a Service and a Traefik Ingress), worker pods (`RADIOPATH_WORKERS=1`, a
 computation uses all CPUs up to the pod limit) and a Valkey for the tile cache.
-Database and DEM storage are external. `deploy/values-example.yaml` shows the
+Database and DEM storage are external. The chart's `values-example.yaml` shows the
 values a deployment needs; secrets (`DATABASE_URL`, the S3 keys, the SMTP
 password) come from an existing Secret named by `envFromSecret`:
 
 ```sh
 kubectl -n radiopath create secret generic radiopath-env --from-literal=DATABASE_URL=... --from-literal=RADIOPATH_DEM_S3_ACCESS_KEY=... --from-literal=RADIOPATH_DEM_S3_SECRET_KEY=...
-helm upgrade --install radiopath deploy/chart -n radiopath -f deploy/values-example.yaml --set image.tag=<tag>
+git clone https://github.com/radiopath/helmchart && cd helmchart
+helm upgrade --install radiopath . -n radiopath -f values-example.yaml --set image.tag=<tag>
 kubectl -n radiopath exec -it deploy/radiopath -- /radiopath useradd <name>
 ```
 

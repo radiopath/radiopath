@@ -31,13 +31,6 @@ jobs:
       - run: npx tailwindcss -i internal/web/ui/app.css -o internal/web/static/app.css --minify
       - run: cmp committed.css internal/web/static/app.css || { echo "app.css is stale, run 'make css' and commit"; exit 1; }
 
-  lint-chart:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: azure/setup-helm@v4
-      - run: helm lint deploy/chart -f deploy/values-example.yaml --set image.tag=test
-
   e2e:
     runs-on: ubuntu-latest
     services:
