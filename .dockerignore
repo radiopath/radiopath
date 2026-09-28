@@ -7,3 +7,4 @@ docker/
 e2e/
 .github/
 node_modules/
+renovate.json
