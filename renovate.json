@@ -1,0 +1,25 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended"
+    ],
+    "postUpdateOptions": [
+        "gomodTidy"
+    ],
+    "packageRules": [
+        {
+            "matchDatasources": ["docker"],
+            "matchPackageNames": ["/(^|/)valkey/valkey$/"],
+            "allowedVersions": "9.1.x"
+        },
+        {
+            "matchPackageNames": ["go", "/(^|/)golang$/"],
+            "allowedVersions": "/^1\\.26(\\.|-|$)/"
+        },
+        {
+            "matchDatasources": ["docker"],
+            "matchPackageNames": ["/(^|/)postgres$/"],
+            "allowedVersions": "/^18(\\.|-|$)/"
+        }
+    ]
+}
