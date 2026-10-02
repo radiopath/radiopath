@@ -197,6 +197,7 @@ func main() {
 }
 
 func run(ctx context.Context, cfg config, log *slog.Logger) error {
+	log.Info("starting", "version", version, "workers", cfg.workers, "listen", cfg.listen, "metrics", cfg.metricsListen)
 	st, err := store.New(ctx, cfg.databaseURL)
 	if err != nil {
 		return err
