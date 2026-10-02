@@ -254,7 +254,7 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 	}
 	if cfg.smtp.Host != "" {
 		srv.Mail = cfg.smtp
-		log.Info("mail", "smtp", cfg.smtp.Host, "from", cfg.smtp.From, "base_url", cfg.baseURL)
+		log.Info("mail service started", "smtp", cfg.smtp.Host, "from", cfg.smtp.From, "base_url", cfg.baseURL)
 	}
 
 	httpSrv := &http.Server{
