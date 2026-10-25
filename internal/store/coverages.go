@@ -71,10 +71,10 @@ const coverageQuery = `SELECT c.id, c.owner_id, c.name, c.site_id, c.frequency_m
 	c.rx_height_m, c.rx_gain_dbi, c.rx_line_loss_db, c.rx_sensitivity_dbm, c.polarization, c.range_m, c.resolution_m,
 	c.tx_antenna_id, c.tx_azimuth_deg, c.tx_tilt_deg, c.legend_db, c.legend_colors,
 	c.computed_at, c.compute_ms, c.result_note, c.result_north, c.result_south, c.result_east, c.result_west,
-	c.job_state, c.job_queued_at, c.job_started_at, c.job_worker, c.job_error,
+	coalesce(j.state, 'idle'), j.queued_at, j.started_at, j.worker, j.error,
 	c.share_token, c.share_expires_at, c.view_opacity, c.view_overlays, c.view_circles,
 	s.id, s.owner_id, s.name, ST_Y(s.position::geometry), ST_X(s.position::geometry), s.antenna_height_m
-	FROM coverages c JOIN sites s ON s.id = c.site_id`
+	FROM coverages c JOIN sites s ON s.id = c.site_id ` + coverageJobQuery
 
 // scanCoverage scans a row selected with coverageQuery into c, filling defaults for NULL columns.
 func scanCoverage(row interface{ Scan(...any) error }, c *CoverageWithSite) error {
@@ -169,15 +169,14 @@ func (s *Store) CreateCoverage(ctx context.Context, c Coverage) (int64, error) {
 	return id, mapErr(err)
 }
 
-// UpdateCoverage updates the owner's coverage and clears its result; a running job keeps its state. ErrNotFound when not owned or the site or antenna is foreign.
+// UpdateCoverage updates the owner's coverage, clears its result and drops its job unless it is running. ErrNotFound when not owned or the site or antenna is foreign.
 func (s *Store) UpdateCoverage(ctx context.Context, c Coverage) error {
 	tag, err := s.pool.Exec(ctx, `UPDATE coverages SET name = $2, site_id = $3, frequency_mhz = $4, tx_power_dbm = $5,
 		tx_gain_dbi = $6, tx_line_loss_db = $7, rx_height_m = $8, rx_gain_dbi = $9, rx_line_loss_db = $10,
 		rx_sensitivity_dbm = $11, polarization = $12, range_m = $13, resolution_m = $14,
 		tx_antenna_id = $15, tx_azimuth_deg = $16, tx_tilt_deg = $18, updated_at = now(),
 		result_png = NULL, result_margin = NULL, result_north = NULL, result_south = NULL, result_east = NULL, result_west = NULL,
-		computed_at = NULL, compute_ms = NULL, result_note = NULL,
-		job_state = CASE WHEN job_state = 'running' THEN job_state ELSE 'idle' END, job_error = NULL
+		computed_at = NULL, compute_ms = NULL, result_note = NULL
 		WHERE owner_id = $1 AND id = $17 AND `+coverageRefsOwned,
 		c.OwnerID, c.Name, c.SiteID, c.FreqMHz, c.TxPowerDBm, c.TxGainDBi, c.TxLineLossDB,
 		c.RxHeightM, c.RxGainDBi, c.RxLineLossDB, c.RxSensitivityDBm, c.Polarization, c.RangeM, c.ResolutionM,
@@ -188,7 +187,8 @@ func (s *Store) UpdateCoverage(ctx context.Context, c Coverage) error {
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
-	return nil
+	_, err = s.pool.Exec(ctx, `DELETE FROM jobs WHERE coverage_id = $1 AND state <> $2`, c.ID, JobRunning)
+	return err
 }
 
 // DeleteCoverage deletes the owner's coverage; ErrNotFound when not owned.

@@ -14,12 +14,15 @@ var (
 	ErrInUse    = errors.New("store: referenced by other rows")
 	ErrExists   = errors.New("store: already exists")
 	ErrQuota    = errors.New("store: per-user limit reached")
+	ErrBusy     = errors.New("store: job queue full")
 )
 
 const (
 	MaxSitesPerUser     = 200
 	MaxCoveragesPerUser = 50
-	MaxJobsPerUser      = 2
+	MaxJobsPerUser      = 2  // coverage jobs queued or running
+	MaxShortJobsPerUser = 20 // every other kind together
+	MaxQueuedJobs       = 500
 	MaxTokensPerUser    = 20
 )
 
@@ -59,7 +62,7 @@ func (s *Store) Stats(ctx context.Context) (Stats, error) {
 	if err != nil {
 		return st, err
 	}
-	rows, err := s.pool.Query(ctx, `SELECT job_state, count(*) FROM coverages GROUP BY job_state`)
+	rows, err := s.pool.Query(ctx, `SELECT coalesce(j.state, 'idle'), count(*) FROM coverages c `+coverageJobQuery+` GROUP BY 1`)
 	if err != nil {
 		return st, err
 	}

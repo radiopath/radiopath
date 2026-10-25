@@ -21,6 +21,7 @@ const (
 	pollInterval = 2 * time.Second
 	jobTimeout   = 10 * time.Minute
 	staleAfter   = 15 * time.Minute
+	maxAttempts  = 3 // a job claimed this often failed its workers (e.g. out of memory) and is not run again
 )
 
 type Worker struct {
@@ -34,7 +35,7 @@ type Worker struct {
 func (w *Worker) Run(ctx context.Context) {
 	w.Log.Info("worker started", "name", w.Name)
 	for {
-		c, err := w.Store.ClaimCoverageJob(ctx, w.Name, staleAfter)
+		j, err := w.Store.ClaimJob(ctx, w.Name, []string{store.KindCoverage}, staleAfter)
 		switch {
 		case errors.Is(err, store.ErrNotFound):
 			select {
@@ -55,7 +56,22 @@ func (w *Worker) Run(ctx context.Context) {
 			}
 			continue
 		}
-		w.run(ctx, c)
+		if j.Attempts >= maxAttempts {
+			if err := w.Store.FailJob(ctx, j.ID, "The calculation was interrupted repeatedly."); err != nil {
+				w.Log.Error("mark failed", "err", err)
+			}
+			w.Log.Warn("job given up", "job", j.ID, "attempts", j.Attempts)
+			continue
+		}
+		c, err := w.Store.GetCoverage(ctx, j.OwnerID, *j.CoverageID)
+		if err != nil {
+			// the coverage was deleted meanwhile and took its job along
+			if ctx.Err() == nil && !errors.Is(err, store.ErrNotFound) {
+				w.Log.Error("load coverage", "job", j.ID, "err", err)
+			}
+			continue
+		}
+		w.run(ctx, j.ID, c)
 		if ctx.Err() != nil {
 			return
 		}
@@ -63,7 +79,7 @@ func (w *Worker) Run(ctx context.Context) {
 }
 
 // run computes one claimed job and stores the result or failure; on shutdown it requeues the job instead.
-func (w *Worker) run(ctx context.Context, c store.CoverageWithSite) {
+func (w *Worker) run(ctx context.Context, job int64, c store.CoverageWithSite) {
 	log := w.Log.With("coverage", c.ID, "name", c.Name)
 	log.Info("job started")
 	jobCtx, cancel := context.WithTimeout(ctx, jobTimeout)
@@ -95,7 +111,7 @@ func (w *Worker) run(ctx context.Context, c store.CoverageWithSite) {
 	defer dbCancel()
 
 	if ctx.Err() != nil {
-		if err := w.Store.RequeueCoverageJob(dbCtx, c.ID); err != nil {
+		if err := w.Store.RequeueJob(dbCtx, job); err != nil {
 			log.Error("requeue", "err", err)
 		}
 		metrics.CoverageJobs.WithLabelValues("requeued").Inc()
@@ -107,7 +123,7 @@ func (w *Worker) run(ctx context.Context, c store.CoverageWithSite) {
 		if errors.Is(jobCtx.Err(), context.DeadlineExceeded) {
 			reason = fmt.Sprintf("The calculation took longer than %s.", jobTimeout)
 		}
-		if dbErr := w.Store.FailCoverageJob(dbCtx, c.ID, reason); dbErr != nil {
+		if dbErr := w.Store.FailJob(dbCtx, job, reason); dbErr != nil {
 			log.Error("mark failed", "err", dbErr)
 		}
 		metrics.CoverageJobs.WithLabelValues("failed").Inc()
@@ -122,7 +138,7 @@ func (w *Worker) run(ctx context.Context, c store.CoverageWithSite) {
 		log.Warn("radials truncated: no DEM data", "truncated", res.Truncated, "radials", res.Radials, "err", res.Errors)
 	}
 	b := store.Bounds{North: res.North, South: res.South, East: res.East, West: res.West}
-	if err := w.Store.FinishCoverageJob(dbCtx, c.ID, plot.CoveragePNG(res, plot.LegendOr(c.LegendDB, c.LegendColors)), plot.MarginPNG(res), b, elapsed, note); err != nil {
+	if err := w.Store.FinishCoverageJob(dbCtx, job, c.ID, plot.CoveragePNG(res, plot.LegendOr(c.LegendDB, c.LegendColors)), plot.MarginPNG(res), b, elapsed, note); err != nil {
 		log.Error("save result", "err", err)
 		return
 	}

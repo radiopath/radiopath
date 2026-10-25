@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An isotropic HF antenna shares one elevation row between its 360 azimuths instead of allocating a 360 x 91 pattern: a reliability map allocates 110 MB instead of 470 MB (by @HB9HIL)
 - The magnetic field series of the HF model evaluates its sines, cosines and powers once per term instead of three times: a prediction takes 8 ms instead of 15 ms, a map 0.7 s instead of 1.5 s of CPU time. The results are identical on amd64; on arm64 the compiler fuses the multiply-adds differently, which can change the last bit (by @HB9HIL)
 
+### Refactored
+- Coverage jobs live in a table `jobs` of their own (migration 0023 moves them, the `job_*` columns of a coverage are gone) that is built to hold every kind of job: owner, kind, input snapshot and its hash, state, attempts, result. A coverage shows its newest job; a job claimed three times without finishing fails instead of being taken over again (by @HB9HIL)
+
 ### Chore
 - Benchmarks of an HF prediction and of a reliability map, and a golden test that hashes every reference case bit for bit (`testdata/golden_<arch>.txt`), so performance work on the HF model can prove it left the results alone (by @HB9HIL)
 
