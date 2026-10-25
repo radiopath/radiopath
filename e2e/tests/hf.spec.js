@@ -117,6 +117,13 @@ test('draws the MUF and reliability charts', async ({ page }) => {
   await expect(page.getByText('2000 km', { exact: true })).toBeVisible()
   await expect(page.getByText('7.1 MHz at 06:00')).toBeVisible()
   await expect(page.getByText('80 % of the days')).toBeVisible()
+
+  // a changed form marks the results stale until the next prediction
+  await expect(page.getByText('The form changed')).toHaveCount(0)
+  await page.locator('[name=frequencies_mhz]').fill('7.1')
+  await expect(page.getByText('The form changed')).toBeVisible()
+  await c(page, 'button', 'Predict').click()
+  await expect(page.getByText('The form changed')).toHaveCount(0)
 })
 
 // a map answer built by hand: a frame per requested hour, one cell the model could not calculate

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Waves from '@lucide/svelte/icons/audio-waveform';
+	import { tick } from 'svelte';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { api, call, parseNum, type HFMap, type HFPoint, type HFPredictionInput, type Site } from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
@@ -15,6 +16,7 @@
 	import { invalid, notifyError } from '$lib/notify';
 	import PageHead from '$lib/PageHead.svelte';
 	import InfoButton from '$lib/InfoButton.svelte';
+	import Notice from '$lib/Notice.svelte';
 	import StatTiles, { type Tile } from '$lib/StatTiles.svelte';
 
 	const now = new Date();
@@ -82,9 +84,15 @@
 		long_path: false
 	});
 	let busy = $state(false);
+	// "Predicting 3 of 12…" while the months of a range run one after the other.
+	let progress = $state('');
 	let error = $state<unknown>(null);
 	let runs = $state<Run[] | null>(null);
 	let runKey = $state('');
+	// The form as it was when the shown runs were predicted; a difference marks them stale.
+	let ran = $state('');
+	let results: HTMLDivElement | undefined = $state();
+	const stale = $derived(runs != null && JSON.stringify(v) !== ran);
 	// Whether the shown points were predicted with digital modulation, which decides the reliability to show.
 	let digitalRun = $state(false);
 
@@ -349,6 +357,7 @@
 		error = null;
 		try {
 			const digital = v.modulation === 'digital';
+			const form = JSON.stringify(v);
 			const bs = await withSunspots(bodies());
 			const b = bs[0];
 			const tx = sites.data?.find((s) => s.id === b.site_a_id);
@@ -358,17 +367,22 @@
 			if (b.frequencies_mhz.length) void loadMap(b, b.frequencies_mhz[0]);
 			const done: Run[] = [];
 			for (const r of bs) {
+				if (bs.length > 1) progress = `Predicting ${done.length + 1} of ${bs.length}…`;
 				const points = (await call(api.POST('/api/hf/predictions', { body: r }))).points;
 				done.push({ key: `${r.year}-${r.month}`, label: monthLabel(r.year, r.month), body: r, points });
 			}
 			runKey = done[0].key;
 			runs = done;
+			ran = form;
 			digitalRun = digital;
+			await tick();
+			results?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 		} catch (err) {
 			error = err;
 			notifyError(err);
 		} finally {
 			busy = false;
+			progress = '';
 		}
 	}
 
@@ -600,7 +614,7 @@
 			</Field>
 		</fieldset>
 		<div class="flex items-center gap-3">
-			<Button type="submit" disabled={busy || (sites.data?.length ?? 0) < 2}>Predict</Button>
+			<Button type="submit" disabled={busy || (sites.data?.length ?? 0) < 2}>{progress || 'Predict'}</Button>
 			{#if sites.data && sites.data.length < 2}
 				<span class="text-xs text-muted-foreground">Create at least two <a class="text-primary" href="/sites/new">sites</a> first.</span>
 			{/if}
@@ -608,129 +622,138 @@
 	</form>
 
 	<FormErrors {error} />
-	{#if runs && runs.length > 1}
-		<label class="flex items-center gap-3 text-sm">
-			<span class="text-muted-foreground">Month shown</span>
-			<NativeSelect class="w-48" name="period" value={run?.key} onchange={(e) => pickRun(e.currentTarget.value)}>
-				{#each runs as r (r.key)}<option value={r.key}>{r.label}</option>{/each}
-			</NativeSelect>
-			<span class="text-xs text-muted-foreground">for the map, the charts and the table</span>
-		</label>
-	{/if}
-	{#if shown.length}
-		<StatTiles tiles={tiles()} />
-	{/if}
-	{#if heatSites && (heatmap || heatBusy || heatError)}
-		<section class="relative grid gap-3 rounded-lg border bg-card p-3" aria-label="Reliability map">
-			<InfoButton label="About the reliability map" text={infoText.map} />
-			<div class="flex flex-wrap items-center justify-between gap-2 pr-6">
-				<h2 class="text-sm font-medium">Reliability from {heatSites.tx.name} at {heatFreq || heatBody?.frequencies_mhz[0]} MHz</h2>
-				{#if freqs.length > 1}
-					<NativeSelect
-						class="w-32"
-						name="map_frequency"
-						aria-label="Frequency of the map"
-						value={String(heatFreq)}
-						disabled={heatBusy}
-						onchange={(e) => pickFrequency(Number(e.currentTarget.value))}
-					>
-						{#each freqs as f (f)}<option value={String(f)}>{f} MHz</option>{/each}
+	{#if runs || heatSites}
+		<div class="scroll-mt-16 grid gap-6" bind:this={results}>
+			{#if stale}
+				<Notice>The form changed since this prediction; predict again to see the effect.</Notice>
+			{/if}
+			{#if runs && runs.length > 1}
+				<label class="flex items-center gap-3 text-sm">
+					<span class="text-muted-foreground">Month shown</span>
+					<NativeSelect class="w-48" name="period" value={run?.key} onchange={(e) => pickRun(e.currentTarget.value)}>
+						{#each runs as r (r.key)}<option value={r.key}>{r.label}</option>{/each}
 					</NativeSelect>
-				{/if}
-			</div>
-			<FormErrors error={heatError} />
-			{#if heatmap}
-				<div class={heatBusy ? 'opacity-60' : undefined}>
-					<HFHeatmap tx={heatSites.tx} rx={heatSites.rx} map={heatmap} frame={heatFrame} />
+					<span class="text-xs text-muted-foreground">for the map, the charts and the table</span>
+				</label>
+			{/if}
+			{#if shown.length}
+				<StatTiles tiles={tiles()} />
+			{/if}
+			{#if heatSites && (heatmap || heatBusy || heatError)}
+				<section class="relative grid gap-3 rounded-lg border bg-card p-3" aria-label="Reliability map">
+					<InfoButton label="About the reliability map" text={infoText.map} />
+					<div class="flex flex-wrap items-center justify-between gap-2 pr-6">
+						<h2 class="text-sm font-medium">Reliability from {heatSites.tx.name} at {heatFreq || heatBody?.frequencies_mhz[0]} MHz</h2>
+						{#if freqs.length > 1}
+							<NativeSelect
+								class="w-32"
+								name="map_frequency"
+								aria-label="Frequency of the map"
+								value={String(heatFreq)}
+								disabled={heatBusy}
+								onchange={(e) => pickFrequency(Number(e.currentTarget.value))}
+							>
+								{#each freqs as f (f)}<option value={String(f)}>{f} MHz</option>{/each}
+							</NativeSelect>
+						{/if}
+					</div>
+					<FormErrors error={heatError} />
+					{#if heatmap}
+						<div class={heatBusy ? 'opacity-60' : undefined}>
+							<HFHeatmap tx={heatSites.tx} rx={heatSites.rx} map={heatmap} frame={heatFrame} />
+						</div>
+						{@const hour = String(heatmap.frames[heatFrame]?.hour_utc ?? '').padStart(2, '0')}
+						{#if heatmap.frames.length > 1}
+							<label class="flex items-center gap-3 text-sm">
+								<span class="w-24 shrink-0 font-mono tabular-nums">{hour}:00 UTC</span>
+								<input
+									type="range"
+									name="map_hour"
+									class="w-full accent-primary"
+									min="0"
+									max={heatmap.frames.length - 1}
+									step="1"
+									aria-label="Hour of the map"
+									aria-valuetext="{hour}:00 UTC"
+									bind:value={heatFrame}
+								/>
+							</label>
+						{:else}
+							<p class="font-mono text-sm tabular-nums">{hour}:00 UTC</p>
+						{/if}
+						<div class="flex items-center gap-2 text-xs text-muted-foreground">
+							<span>0 %</span>
+							<span class="h-2 flex-1 rounded" style:background="linear-gradient(to right, {[0, 25, 50, 75, 100].map(heat).join(', ')})"></span>
+							<span>100 %</span>
+						</div>
+						<p class="text-xs text-muted-foreground">
+							Circuit reliability from A (TX) to the centre of each {heatmap.step_deg}° cell, B (RX) is marked for reference. Antennas count as
+							isotropic with their main lobe gain. Cells without colour could not be calculated.
+						</p>
+					{:else if heatBusy}
+						<Skeleton class="h-64 w-full" />
+					{/if}
+				</section>
+			{/if}
+			{#if shown.length}
+				<div class="grid gap-4 md:grid-cols-2">
+					<LineChart
+						title="MUF"
+						unit="MHz"
+						band={{ label: 'MUF exceeded on 90% to 10% of the days', color: 'var(--cp-fg)', lo: mufOver('muf_90_mhz'), hi: mufOver('muf_10_mhz') }}
+						series={[{ label: 'MUF, median', color: 'var(--cp-fg)', points: mufOver('muf_50_mhz') }]}
+						refs={freqs.map((f, i) => ({ label: `${f} MHz`, color: palette[i % palette.length], y: f }))}
+						info={infoText.muf}
+					/>
+					<LineChart
+						title="Circuit reliability"
+						unit="%"
+						yMax={100}
+						info={infoText.reliability}
+						series={freqs.map((f, i) => ({ label: `${f} MHz`, color: palette[i % palette.length], points: reliabilityOver(f) }))}
+					/>
 				</div>
-				{@const hour = String(heatmap.frames[heatFrame]?.hour_utc ?? '').padStart(2, '0')}
-				{#if heatmap.frames.length > 1}
-					<label class="flex items-center gap-3 text-sm">
-						<span class="w-24 shrink-0 font-mono tabular-nums">{hour}:00 UTC</span>
-						<input
-							type="range"
-							name="map_hour"
-							class="w-full accent-primary"
-							min="0"
-							max={heatmap.frames.length - 1}
-							step="1"
-							aria-label="Hour of the map"
-							aria-valuetext="{hour}:00 UTC"
-							bind:value={heatFrame}
-						/>
-					</label>
-				{:else}
-					<p class="font-mono text-sm tabular-nums">{hour}:00 UTC</p>
-				{/if}
-				<div class="flex items-center gap-2 text-xs text-muted-foreground">
-					<span>0 %</span>
-					<span class="h-2 flex-1 rounded" style:background="linear-gradient(to right, {[0, 25, 50, 75, 100].map(heat).join(', ')})"></span>
-					<span>100 %</span>
+				<div class="relative rounded-lg border bg-card">
+					<InfoButton label="About the table" text={infoText.table} />
+					<h2 class="border-b px-3 py-2 pr-8 text-sm font-medium">
+						Prediction by hour and frequency{runs && runs.length > 1 ? `, ${run?.label}` : ''}
+					</h2>
+					<Table.Root>
+						<Table.Header>
+							<Table.Row>
+								<Table.Head>Hour</Table.Head>
+								<Table.Head class="text-right">MHz</Table.Head>
+								<Table.Head>Propagation mode</Table.Head>
+								<Table.Head class="hidden text-right sm:table-cell">MUF (MHz)</Table.Head>
+								<Table.Head class="hidden text-right sm:table-cell">Field (dBµV/m)</Table.Head>
+								<Table.Head class="text-right">SNR (dB)</Table.Head>
+								<Table.Head class="text-right">Reliability</Table.Head>
+							</Table.Row>
+						</Table.Header>
+						<Table.Body>
+							{#each shown as p (`${p.hour_utc}-${p.frequency_mhz}`)}
+								<Table.Row>
+									<Table.Cell class="font-mono tabular-nums">{String(p.hour_utc).padStart(2, '0')}:00</Table.Cell>
+									<Table.Cell class="text-right font-mono tabular-nums">{p.frequency_mhz}</Table.Cell>
+									<Table.Cell>{p.distance_km > 7000 ? '–' : p.dominant_mode}</Table.Cell>
+									<Table.Cell class="hidden text-right font-mono tabular-nums sm:table-cell">{val(p.muf_50_mhz)}</Table.Cell>
+									<Table.Cell class="hidden text-right font-mono tabular-nums sm:table-cell">{val(p.field_strength_dbuv_m)}</Table.Cell>
+									<Table.Cell class="text-right font-mono tabular-nums">{val(p.snr_db)}</Table.Cell>
+									<Table.Cell class="text-right font-mono tabular-nums" style={heatCell(p)}>{reliability(p)} %</Table.Cell>
+								</Table.Row>
+							{/each}
+						</Table.Body>
+					</Table.Root>
 				</div>
 				<p class="text-xs text-muted-foreground">
-					Circuit reliability from A (TX) to the centre of each {heatmap.step_deg}° cell, B (RX) is marked for reference. Antennas count as isotropic
-					with their main lobe gain. Cells without colour could not be calculated.
+					Median values; MUF is exceeded on 50% of the days. A dash means the quantity does not apply to the path.
+					{#if shown[0].distance_km > 7000}
+						Beyond 7000 km the model gives the field strength of the whole path, not of single modes, so there is no propagation mode.
+					{/if}
 				</p>
-			{:else if heatBusy}
-				<Skeleton class="h-64 w-full" />
+			{:else if runs}
+				<EmptyState icon={Waves}>The model returned no points.</EmptyState>
 			{/if}
-		</section>
-	{/if}
-	{#if shown.length}
-		<div class="grid gap-4 md:grid-cols-2">
-			<LineChart
-				title="MUF"
-				unit="MHz"
-				band={{ label: 'MUF exceeded on 90% to 10% of the days', color: 'var(--cp-fg)', lo: mufOver('muf_90_mhz'), hi: mufOver('muf_10_mhz') }}
-				series={[{ label: 'MUF, median', color: 'var(--cp-fg)', points: mufOver('muf_50_mhz') }]}
-				refs={freqs.map((f, i) => ({ label: `${f} MHz`, color: palette[i % palette.length], y: f }))}
-				info={infoText.muf}
-			/>
-			<LineChart
-				title="Circuit reliability"
-				unit="%"
-				yMax={100}
-				info={infoText.reliability}
-				series={freqs.map((f, i) => ({ label: `${f} MHz`, color: palette[i % palette.length], points: reliabilityOver(f) }))}
-			/>
 		</div>
-		<div class="relative rounded-lg border bg-card">
-			<InfoButton label="About the table" text={infoText.table} />
-			<h2 class="border-b px-3 py-2 pr-8 text-sm font-medium">Prediction by hour and frequency{runs && runs.length > 1 ? `, ${run?.label}` : ''}</h2>
-			<Table.Root>
-				<Table.Header>
-					<Table.Row>
-						<Table.Head>Hour</Table.Head>
-						<Table.Head class="text-right">MHz</Table.Head>
-						<Table.Head>Propagation mode</Table.Head>
-						<Table.Head class="hidden text-right sm:table-cell">MUF (MHz)</Table.Head>
-						<Table.Head class="hidden text-right sm:table-cell">Field (dBµV/m)</Table.Head>
-						<Table.Head class="text-right">SNR (dB)</Table.Head>
-						<Table.Head class="text-right">Reliability</Table.Head>
-					</Table.Row>
-				</Table.Header>
-				<Table.Body>
-					{#each shown as p (`${p.hour_utc}-${p.frequency_mhz}`)}
-						<Table.Row>
-							<Table.Cell class="font-mono tabular-nums">{String(p.hour_utc).padStart(2, '0')}:00</Table.Cell>
-							<Table.Cell class="text-right font-mono tabular-nums">{p.frequency_mhz}</Table.Cell>
-							<Table.Cell>{p.distance_km > 7000 ? '–' : p.dominant_mode}</Table.Cell>
-							<Table.Cell class="hidden text-right font-mono tabular-nums sm:table-cell">{val(p.muf_50_mhz)}</Table.Cell>
-							<Table.Cell class="hidden text-right font-mono tabular-nums sm:table-cell">{val(p.field_strength_dbuv_m)}</Table.Cell>
-							<Table.Cell class="text-right font-mono tabular-nums">{val(p.snr_db)}</Table.Cell>
-							<Table.Cell class="text-right font-mono tabular-nums" style={heatCell(p)}>{reliability(p)} %</Table.Cell>
-						</Table.Row>
-					{/each}
-				</Table.Body>
-			</Table.Root>
-		</div>
-		<p class="text-xs text-muted-foreground">
-			Median values; MUF is exceeded on 50% of the days. A dash means the quantity does not apply to the path.
-			{#if shown[0].distance_km > 7000}
-				Beyond 7000 km the model gives the field strength of the whole path, not of single modes, so there is no propagation mode.
-			{/if}
-		</p>
-	{:else if runs}
-		<EmptyState icon={Waves}>The model returned no points.</EmptyState>
 	{/if}
 </div>
