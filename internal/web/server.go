@@ -204,6 +204,9 @@ func (s *Server) spa() http.Handler {
 const (
 	computeWindow  = time.Minute
 	computeUserMax = 60
+	// apiUserMax is the ceiling for everything a user does over the JSON API per minute, sessions and tokens together;
+	// the SPA needs a few requests per page, a script that lists and edits in a loop stays well below it.
+	apiUserMax = 600
 )
 
 // computeHit counts one expensive request of user (path analysis, report, raster merge) and answers 429 over

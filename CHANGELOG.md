@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Every API operation that needs a login counts against 600 requests per user and minute, sessions and tokens together, and answers 429 beyond that; the per-token limit of 300 stays (by @HB9HIL)
+
 ### Fixed
 - The API reference groups the HF operations under their own tag "HF" instead of "Account" (by @HB9HIL)
 

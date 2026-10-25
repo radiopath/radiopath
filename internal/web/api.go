@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -164,7 +165,8 @@ func tokenScope(o *huma.Operation) string {
 	return ""
 }
 
-// gate answers 401 for operations with security when nobody is logged in, and 403 when an API token may not call them.
+// gate answers 401 for operations with security when nobody is logged in, 403 when an API token may not call them,
+// and 429 over apiUserMax requests per user and minute, counted over every such operation and every session or token.
 func (s *Server) gate(api huma.API) func(huma.Context, func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
 		o := ctx.Operation()
@@ -172,12 +174,24 @@ func (s *Server) gate(api huma.API) func(huma.Context, func(huma.Context)) {
 			next(ctx)
 			return
 		}
-		if userOf(ctx.Context()).ID == 0 {
+		u := userOf(ctx.Context())
+		if u.ID == 0 {
 			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Not logged in")
 			return
 		}
 		if msg := tokenDenied(ctx.Context(), tokenScope(o)); msg != "" {
 			huma.WriteErr(api, ctx, http.StatusForbidden, msg)
+			return
+		}
+		n, err := s.Store.RateHit(ctx.Context(), fmt.Sprintf("api:user:%d", u.ID), time.Minute)
+		if err != nil {
+			s.Log.Error("rate limit", "err", err)
+			huma.WriteErr(api, ctx, http.StatusInternalServerError, "Internal error")
+			return
+		}
+		if n > apiUserMax {
+			s.Log.Warn("api rate limited", "user", u.ID)
+			huma.WriteErr(api, ctx, http.StatusTooManyRequests, "Too many requests, try again in a minute.")
 			return
 		}
 		next(ctx)

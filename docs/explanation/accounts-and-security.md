@@ -65,9 +65,11 @@ in 15 minutes (so a stranger cannot lock the owner out with a few wrong
 passwords), 5 registration attempts per IP and 3 registration mails per address
 per hour (so nobody can flood a mailbox from many IPs), 5 reset requests per IP
 and 3 per address per hour, 3 confirmation mails per account per hour, 120
-requests per shared object per hour, and 60 path analyses, PDF reports and
+requests per shared object per hour, 60 path analyses, PDF reports and
 raster merges per user per minute (every view of a link recomputes it, so one
-account could otherwise keep the CPUs busy); further requests get HTTP 429. A made-up share token answers 404 without being
+account could otherwise keep the CPUs busy), and 600 requests per user per
+minute over every API operation that needs a login, sessions and tokens
+together (so a runaway script cannot hammer the database); further requests get HTTP 429. A made-up share token answers 404 without being
 counted, so guessing leaves no rows behind. Behind an ingress set
 `RADIOPATH_TRUST_PROXY=true` so the client IP is read from `X-Forwarded-For`
 (last hop); without it every request would count against the ingress address.
