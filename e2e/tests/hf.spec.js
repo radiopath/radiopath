@@ -260,7 +260,9 @@ test('fills the sunspot number from the server until it is typed', async ({ page
 test('remembers the form in the browser', async ({ page }) => {
   await page.goto('/hf')
   await expect(page.getByText('= 100 W')).toBeVisible()
+  await expect(page.getByText('1 month, 24 hours, 2 frequencies')).toBeVisible()
   await page.locator('[name=frequencies_mhz]').fill('3.5')
+  await expect(page.getByText('1 month, 24 hours, 1 frequency')).toBeVisible()
   await page.locator('[name=tx_power_dbm]').fill('43')
   await page.locator('[name=mode]').selectOption('ft8')
   await expect(page.getByText('= 20 W')).toBeVisible()

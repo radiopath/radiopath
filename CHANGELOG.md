@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The HF page remembers its form in the browser (nothing is stored on the server), shows the TX power in watts next to the dBm field, and fills the sunspot number from NOAA again when the typed one is cleared (by @HB9HIL)
 
 ### Changed
+- The HF form lays its four blocks out in two columns on wide screens, circuit and stations above time and signal, and the Predict button says what it will ask for, like "3 months, 24 hours, 2 frequencies" (by @HB9HIL)
 - The HF reliability map is a flat world map drawn as SVG (Natural Earth coastlines, a rectangle per cell with its value as tooltip, markers A and B) instead of a Leaflet map on OpenStreetMap tiles: every cell has the same size, nothing is loaded from the tile server (by @HB9HIL)
 - The HF page asks for the time one way: a first and a last month (the same for one month) and the hours as from, to and every, which used to be the "several months" mode only; the year, month and hour list fields are gone and a prediction covers every hour of the day by default (by @HB9HIL)
 

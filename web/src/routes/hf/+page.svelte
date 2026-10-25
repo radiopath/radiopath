@@ -415,6 +415,17 @@
 		}
 	}
 
+	/** What the form asks for, like "3 months, 24 hours, 2 frequencies"; empty while a field is not a number. */
+	const size = $derived.by(() => {
+		const months = monthIndex(v.range_end) - monthIndex(v.range_start) + 1;
+		const hours = Math.floor((parseNum(v.range_to) - parseNum(v.range_from)) / parseNum(v.range_step)) + 1;
+		const freqs = list(v.frequencies_mhz).length;
+		if (!(months >= 1 && hours >= 1 && freqs >= 1)) return '';
+		/** k of a thing, with its plural. */
+		const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
+		return `${n(months, 'month', 'months')}, ${n(hours, 'hour', 'hours')}, ${n(freqs, 'frequency', 'frequencies')}`;
+	});
+
 	/** A power typed in dBm as "= 100 W" or "= 500 mW"; empty when it is no number. */
 	function watts(dbm: string): string {
 		const w = 10 ** ((parseNum(dbm) - 30) / 10);
@@ -491,8 +502,8 @@
 
 <PageHead title="HF prediction" />
 <div class="grid gap-6">
-	<form class="grid gap-6 rounded-lg border bg-card p-4" onsubmit={submit}>
-		<fieldset class="grid gap-3">
+	<form class="grid gap-6 rounded-lg border bg-card p-4 lg:grid-cols-2 lg:gap-x-8" onsubmit={submit}>
+		<fieldset class="grid content-start gap-3">
 			<legend class="mb-2 w-full border-b pb-1 text-xs font-medium text-muted-foreground">Circuit</legend>
 			{#if links.data?.length}
 				<Field wide label="Fill from link">
@@ -519,46 +530,7 @@
 				</span>
 			</Field>
 		</fieldset>
-		<fieldset class="grid gap-3">
-			<legend class="mb-2 w-full border-b pb-1 text-xs font-medium text-muted-foreground">Time and ionosphere</legend>
-			<Field wide label="First month">
-				<Input class="max-w-68 font-mono" type="month" name="range_start" bind:value={v.range_start} />
-			</Field>
-			<Field wide label="Last month">
-				<Input class="max-w-68 font-mono" type="month" name="range_end" bind:value={v.range_end} />
-			</Field>
-			<Field wide label="Hours (UTC, 0 to 23)">
-				<span class="flex items-center gap-2">
-					<Input class="w-20 font-mono" name="range_from" inputmode="numeric" aria-label="From hour" bind:value={v.range_from} />
-					<span class="text-xs text-muted-foreground">to</span>
-					<Input class="w-20 font-mono" name="range_to" inputmode="numeric" aria-label="To hour" bind:value={v.range_to} />
-					<span class="text-xs text-muted-foreground">every</span>
-					<Input class="w-20 font-mono" name="range_step" inputmode="numeric" aria-label="Step in hours" bind:value={v.range_step} />
-					<span class="text-xs text-muted-foreground">h</span>
-				</span>
-			</Field>
-			<p class="text-xs text-muted-foreground">
-				The model gives the median day of each month at each hour, so there is no day to pick: each month from the first to the last (at most
-				{maxMonths}) is one prediction.
-			</p>
-			<Field wide label="Sunspot number (R12)">
-				<Input
-					class="max-w-68 font-mono"
-					name="ssn"
-					inputmode="numeric"
-					bind:value={v.ssn}
-					oninput={(e) => (ssnEdited = e.currentTarget.value.trim() !== '')}
-				/>
-			</Field>
-			{#if sunspot.data}
-				<p class="text-xs text-muted-foreground" data-testid="ssn-source">
-					{sunspot.data.ssn}, {sunspot.data.source} smoothed value of {sunspot.data.reference} for {v.range_start === v.range_end
-						? 'this month'
-						: 'the first month, the others get their own'}
-				</p>
-			{/if}
-		</fieldset>
-		<fieldset class="grid gap-3">
+		<fieldset class="grid content-start gap-3">
 			<legend class="mb-2 w-full border-b pb-1 text-xs font-medium text-muted-foreground">Stations</legend>
 			<Field wide label="TX power (dBm)">
 				<span class="flex items-center gap-2">
@@ -597,7 +569,46 @@
 				An antenna measured at VHF is only a rough model at HF. An empty azimuth aims the antenna at the other site.
 			</p>
 		</fieldset>
-		<fieldset class="grid gap-3">
+		<fieldset class="grid content-start gap-3">
+			<legend class="mb-2 w-full border-b pb-1 text-xs font-medium text-muted-foreground">Time and ionosphere</legend>
+			<Field wide label="First month">
+				<Input class="max-w-68 font-mono" type="month" name="range_start" bind:value={v.range_start} />
+			</Field>
+			<Field wide label="Last month">
+				<Input class="max-w-68 font-mono" type="month" name="range_end" bind:value={v.range_end} />
+			</Field>
+			<Field wide label="Hours (UTC, 0 to 23)">
+				<span class="flex items-center gap-2">
+					<Input class="w-20 font-mono" name="range_from" inputmode="numeric" aria-label="From hour" bind:value={v.range_from} />
+					<span class="text-xs text-muted-foreground">to</span>
+					<Input class="w-20 font-mono" name="range_to" inputmode="numeric" aria-label="To hour" bind:value={v.range_to} />
+					<span class="text-xs text-muted-foreground">every</span>
+					<Input class="w-20 font-mono" name="range_step" inputmode="numeric" aria-label="Step in hours" bind:value={v.range_step} />
+					<span class="text-xs text-muted-foreground">h</span>
+				</span>
+			</Field>
+			<p class="text-xs text-muted-foreground">
+				The model gives the median day of each month at each hour, so there is no day to pick: each month from the first to the last (at most
+				{maxMonths}) is one prediction.
+			</p>
+			<Field wide label="Sunspot number (R12)">
+				<Input
+					class="max-w-68 font-mono"
+					name="ssn"
+					inputmode="numeric"
+					bind:value={v.ssn}
+					oninput={(e) => (ssnEdited = e.currentTarget.value.trim() !== '')}
+				/>
+			</Field>
+			{#if sunspot.data}
+				<p class="text-xs text-muted-foreground" data-testid="ssn-source">
+					{sunspot.data.ssn}, {sunspot.data.source} smoothed value of {sunspot.data.reference} for {v.range_start === v.range_end
+						? 'this month'
+						: 'the first month, the others get their own'}
+				</p>
+			{/if}
+		</fieldset>
+		<fieldset class="grid content-start gap-3">
 			<legend class="mb-2 w-full border-b pb-1 text-xs font-medium text-muted-foreground">Signal</legend>
 			<Field wide label="Mode">
 				<NativeSelect class="w-68" name="mode" bind:value={v.mode} onchange={(e) => pickMode(e.currentTarget.value)}>
@@ -640,8 +651,9 @@
 				</NativeSelect>
 			</Field>
 		</fieldset>
-		<div class="flex items-center gap-3">
+		<div class="flex items-center gap-3 lg:col-span-2">
 			<Button type="submit" disabled={busy || (sites.data?.length ?? 0) < 2}>{progress || 'Predict'}</Button>
+			{#if size}<span class="text-xs text-muted-foreground">{size}</span>{/if}
 			{#if sites.data && sites.data.length < 2}
 				<span class="text-xs text-muted-foreground">Create at least two <a class="text-primary" href="/sites/new">sites</a> first.</span>
 			{/if}
