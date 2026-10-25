@@ -61,6 +61,7 @@ type Server struct {
 
 	streamsMu sync.Mutex
 	streams   map[int64]int // open job event streams per user
+	waits     jobWaits      // requests waiting for a job, woken by JobDone
 }
 
 // Handler parses the admin templates and builds the route tree: health, tiles, the JSON API, the binary routes of

@@ -98,36 +98,42 @@ func (s *Store) EnqueueJob(ctx context.Context, owner int64, coverage *int64, ki
 		// another request queued the same job in the meantime
 		return existing()
 	}
+	if err != nil {
+		return Job{}, err
+	}
+	_, err = s.pool.Exec(ctx, `SELECT pg_notify($1, $2)`, ChanJobQueued, kind)
 	return j, err
 }
 
-// ClaimJob takes the oldest queued job of one of the kinds, or a running one started more than stale ago, marks it
-// running for worker and counts the attempt; ErrNotFound when there is none.
-func (s *Store) ClaimJob(ctx context.Context, worker string, kinds []string, stale time.Duration) (Job, error) {
+// ClaimJob takes the oldest queued job of the class (coverage jobs or every other kind), or a running one started
+// more than stale ago, marks it running for worker and counts the attempt; ErrNotFound when there is none.
+func (s *Store) ClaimJob(ctx context.Context, worker string, coverage bool, stale time.Duration) (Job, error) {
 	return scanJob(s.pool.QueryRow(ctx, `UPDATE jobs SET state = $1, started_at = now(), worker = $2, attempts = attempts + 1
 		WHERE id = (
 			SELECT id FROM jobs
-			WHERE kind = ANY($3) AND (state = $4 OR (state = $1 AND started_at < now() - $5::interval))
+			WHERE (kind = $3) = $4 AND (state = $5 OR (state = $1 AND started_at < now() - $6::interval))
 			ORDER BY queued_at LIMIT 1 FOR UPDATE SKIP LOCKED)
-		RETURNING `+jobCols, JobRunning, worker, kinds, JobQueued, stale.String()))
+		RETURNING `+jobCols, JobRunning, worker, KindCoverage, coverage, JobQueued, stale.String()))
 }
 
 // FinishJob stores the result of a short job and marks it done.
 func (s *Store) FinishJob(ctx context.Context, id int64, result []byte, elapsed time.Duration) error {
-	_, err := s.pool.Exec(ctx, `UPDATE jobs SET state = $2, result = $3, finished_at = now(), compute_ms = $4, error = NULL WHERE id = $1`,
-		id, JobDone, result, int32(elapsed.Milliseconds()))
+	_, err := s.pool.Exec(ctx, `WITH j AS (UPDATE jobs SET state = $2, result = $3, finished_at = now(), compute_ms = $4, error = NULL WHERE id = $1 RETURNING id)
+		SELECT pg_notify($5, id::text) FROM j`, id, JobDone, result, int32(elapsed.Milliseconds()), ChanJobDone)
 	return err
 }
 
 // FailJob marks the job failed with msg.
 func (s *Store) FailJob(ctx context.Context, id int64, msg string) error {
-	_, err := s.pool.Exec(ctx, `UPDATE jobs SET state = $2, error = $3, finished_at = now() WHERE id = $1`, id, JobFailed, msg)
+	_, err := s.pool.Exec(ctx, `WITH j AS (UPDATE jobs SET state = $2, error = $3, finished_at = now() WHERE id = $1 RETURNING id)
+		SELECT pg_notify($4, id::text) FROM j`, id, JobFailed, msg, ChanJobDone)
 	return err
 }
 
 // RequeueJob puts a running job back to queued, e.g. on shutdown.
 func (s *Store) RequeueJob(ctx context.Context, id int64) error {
-	_, err := s.pool.Exec(ctx, `UPDATE jobs SET state = $2, worker = NULL WHERE id = $1 AND state = $3`, id, JobQueued, JobRunning)
+	_, err := s.pool.Exec(ctx, `WITH j AS (UPDATE jobs SET state = $2, worker = NULL WHERE id = $1 AND state = $3 RETURNING kind)
+		SELECT pg_notify($4, kind) FROM j`, id, JobQueued, JobRunning, ChanJobQueued)
 	return err
 }
 
@@ -165,26 +171,30 @@ func (s *Store) FinishCoverageJob(ctx context.Context, job, id int64, png, margi
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
-	if _, err := tx.Exec(ctx, `UPDATE jobs SET state = $2, finished_at = now(), compute_ms = $3, error = NULL WHERE id = $1`,
-		job, JobDone, int32(elapsed.Milliseconds())); err != nil {
+	if _, err := tx.Exec(ctx, `WITH j AS (UPDATE jobs SET state = $2, finished_at = now(), compute_ms = $3, error = NULL WHERE id = $1 RETURNING id)
+		SELECT pg_notify($4, id::text) FROM j`, job, JobDone, int32(elapsed.Milliseconds()), ChanJobDone); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
 }
 
 // coverageJobQuery joins the newest job of a coverage; idle without one.
-const coverageJobQuery = `LEFT JOIN LATERAL (SELECT state, queued_at, started_at, worker, error FROM jobs
+const coverageJobQuery = `LEFT JOIN LATERAL (SELECT id, state, queued_at, started_at, worker, error FROM jobs
 	WHERE jobs.coverage_id = c.id ORDER BY jobs.id DESC LIMIT 1) j ON true`
 
 // CoverageJob returns the state of the owner's coverage job; ErrNotFound when not owned.
 func (s *Store) CoverageJob(ctx context.Context, owner, id int64) (Job, error) {
 	var j Job
 	var worker, jobErr *string
-	err := s.pool.QueryRow(ctx, `SELECT coalesce(j.state, 'idle'), j.queued_at, j.started_at, j.worker, j.error FROM coverages c `+
+	var jobID *int64
+	err := s.pool.QueryRow(ctx, `SELECT j.id, coalesce(j.state, 'idle'), j.queued_at, j.started_at, j.worker, j.error FROM coverages c `+
 		coverageJobQuery+` WHERE c.owner_id = $1 AND c.id = $2`, owner, id).
-		Scan(&j.State, &j.QueuedAt, &j.StartedAt, &worker, &jobErr)
+		Scan(&jobID, &j.State, &j.QueuedAt, &j.StartedAt, &worker, &jobErr)
 	if err != nil {
 		return j, mapErr(err)
+	}
+	if jobID != nil {
+		j.ID = *jobID
 	}
 	if worker != nil {
 		j.Worker = *worker

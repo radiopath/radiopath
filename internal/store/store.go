@@ -45,12 +45,18 @@ func (s *Store) Close() { s.pool.Close() }
 // Ping checks that the database is reachable.
 func (s *Store) Ping(ctx context.Context) error { return s.pool.Ping(ctx) }
 
+type JobCount struct {
+	Kind, State string
+	N           int
+}
+
 type Stats struct {
 	Users, Sites, Links, Sessions int
 	Coverages                     map[string]int
+	Jobs                          []JobCount
 }
 
-// Stats returns table counts, active sessions and coverages per job state.
+// Stats returns table counts, active sessions, coverages per job state and jobs per kind and state.
 func (s *Store) Stats(ctx context.Context) (Stats, error) {
 	var st Stats
 	err := s.pool.QueryRow(ctx, `SELECT
@@ -75,6 +81,21 @@ func (s *Store) Stats(ctx context.Context) (Stats, error) {
 			return st, err
 		}
 		st.Coverages[state] = n
+	}
+	if err := rows.Err(); err != nil {
+		return st, err
+	}
+	rows, err = s.pool.Query(ctx, `SELECT kind, state, count(*) FROM jobs GROUP BY 1, 2`)
+	if err != nil {
+		return st, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var c JobCount
+		if err := rows.Scan(&c.Kind, &c.State, &c.N); err != nil {
+			return st, err
+		}
+		st.Jobs = append(st.Jobs, c)
 	}
 	return st, rows.Err()
 }

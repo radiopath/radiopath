@@ -72,14 +72,14 @@ func TestJobs(t *testing.T) {
 		t.Fatalf("over the limit: err = %v, want ErrQuota", err)
 	}
 
-	if _, err := st.ClaimJob(ctx, "w", []string{KindCoverage}, time.Minute); !errors.Is(err, ErrNotFound) {
+	if _, err := st.ClaimJob(ctx, "w", true, time.Minute); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("claim coverage with none queued: %v", err)
 	}
-	c1, err := st.ClaimJob(ctx, "w1", []string{"link-analysis", "hf-map"}, time.Minute)
+	c1, err := st.ClaimJob(ctx, "w1", false, time.Minute)
 	if err != nil || c1.ID != a.ID || c1.State != JobRunning || c1.Attempts != 1 || c1.Worker != "w1" {
 		t.Fatalf("first claim = %+v %v, want job %d running", c1, err, a.ID)
 	}
-	if c2, err := st.ClaimJob(ctx, "w2", []string{"link-analysis"}, time.Minute); err != nil || c2.ID != b.ID {
+	if c2, err := st.ClaimJob(ctx, "w2", false, time.Minute); err != nil || c2.ID != b.ID {
 		t.Fatalf("second claim = %+v %v, want job %d", c2, err, b.ID)
 	}
 
@@ -98,20 +98,20 @@ func TestJobs(t *testing.T) {
 		t.Fatalf("finished job: %+v %v", j, err)
 	}
 
-	// A running job of a dead worker is taken over after stale and counts another attempt.
-	if _, err := st.pool.Exec(ctx, `UPDATE jobs SET started_at = now() - interval '10 minutes' WHERE id = $1`, a.ID); err != nil {
+	// The oldest job is claimed first; a running job of a dead worker is taken over after stale and counts another attempt.
+	if _, err := st.pool.Exec(ctx, `UPDATE jobs SET queued_at = now() - interval '1 hour' WHERE id = $1`, a.ID); err != nil {
 		t.Fatal(err)
 	}
-	if c, err := st.ClaimJob(ctx, "w3", []string{"link-analysis"}, time.Minute); err != nil || c.ID != a.ID || c.Attempts != 1 {
+	if c, err := st.ClaimJob(ctx, "w3", false, time.Minute); err != nil || c.ID != a.ID || c.Attempts != 1 {
 		t.Fatalf("claim requeued = %+v %v", c, err)
 	}
 	if _, err := st.pool.Exec(ctx, `UPDATE jobs SET started_at = now() - interval '10 minutes' WHERE id = $1`, a.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.ClaimJob(ctx, "w4", []string{"link-analysis"}, time.Hour); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("not stale yet: %v", err)
+	if c, err := st.ClaimJob(ctx, "w4", false, time.Hour); err != nil || c.ID == a.ID {
+		t.Fatalf("not stale yet: %+v %v", c, err)
 	}
-	if c, err := st.ClaimJob(ctx, "w4", []string{"link-analysis"}, 5*time.Minute); err != nil || c.ID != a.ID || c.Attempts != 2 || c.Worker != "w4" {
+	if c, err := st.ClaimJob(ctx, "w4", false, 5*time.Minute); err != nil || c.ID != a.ID || c.Attempts != 2 || c.Worker != "w4" {
 		t.Fatalf("stale takeover = %+v %v", c, err)
 	}
 
@@ -147,7 +147,7 @@ func TestJobs(t *testing.T) {
 	if j, err := st.CoverageJob(ctx, owner, cv1); err != nil || j.State != JobQueued || j.QueuedAt == nil {
 		t.Fatalf("CoverageJob = %+v %v", j, err)
 	}
-	cj, err := st.ClaimJob(ctx, "cw", []string{KindCoverage}, time.Minute)
+	cj, err := st.ClaimJob(ctx, "cw", true, time.Minute)
 	if err != nil || cj.CoverageID == nil || *cj.CoverageID != cv1 || cj.OwnerID != owner {
 		t.Fatalf("coverage claim = %+v %v", cj, err)
 	}

@@ -33,9 +33,9 @@ Next to the `go_*` and `process_*` runtime metrics:
   carries ids, tile coordinates and share tokens. An unmatched
   request is `other`. `/coverages/{id}/events` is an SSE stream of minutes and
   always lands in the `+Inf` bucket.
-- `radiopath_coverage_jobs_total{result}` (done, failed, requeued) and
-  `radiopath_coverage_job_duration_seconds`. The histogram covers successful
-  jobs; a computation that hits the 10 minute timeout is `result="failed"`.
+- `radiopath_jobs_total{kind,result}` (done, failed, requeued) and
+  `radiopath_job_duration_seconds{kind}`. The histogram covers successful
+  jobs; a computation that hits its timeout is `result="failed"`.
 - `radiopath_link_analyses_total{result}`, `radiopath_link_analysis_duration_seconds`.
 - `radiopath_dem_tile_cache_total{kind,result}` — raise
   `RADIOPATH_DEM_CACHE_TILES` when the miss share is high. A tile that does not
@@ -45,16 +45,17 @@ Next to the `go_*` and `process_*` runtime metrics:
 - Gauges read from the database on every scrape: `radiopath_users`,
   `radiopath_sites`, `radiopath_links`, `radiopath_sessions_active` (sessions
   that have not expired, so in practice those used in the last seven days) and
-  `radiopath_coverages{job_state}`, the last one being the job queue depth. A
-  database that is down leaves them out and logs a warning; the scrape still
-  succeeds and everything else is still there.
+  `radiopath_coverages{job_state}` and `radiopath_jobs{kind,state}`, the
+  queued ones being the queue depth. A database that is down leaves them out
+  and logs a warning; the scrape still succeeds and everything else is still
+  there.
 
 **Query the gauges with `max`, not `sum`.** Every replica queries the same
 database and reports the same numbers, so `sum` multiplies them by the replica
 count. The counters and histograms are per pod and are summed as usual.
 
 ```promql
-max(radiopath_coverages{job_state="queued"})            # jobs waiting
+max by (kind) (radiopath_jobs{state="queued"})           # jobs waiting
 sum(rate(radiopath_http_requests_total{code=~"5.."}[5m]))
-histogram_quantile(0.9, sum by (le) (rate(radiopath_coverage_job_duration_seconds_bucket[1h])))
+histogram_quantile(0.9, sum by (le) (rate(radiopath_job_duration_seconds_bucket{kind="coverage"}[1h])))
 ```

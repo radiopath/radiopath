@@ -410,8 +410,24 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 		go func() { defer workers.Done(); sunspots.Run(workerCtx, log) }()
 	}
 
+	// Notifications wake the workers and the requests that follow a job; both also poll in case one is lost.
+	wakeCoverage := make(chan struct{}, 1)
+	workers.Add(2)
+	go func() {
+		defer workers.Done()
+		st.Listen(workerCtx, store.ChanJobQueued, log, func(kind string) {
+			if kind == store.KindCoverage {
+				select {
+				case wakeCoverage <- struct{}{}:
+				default:
+				}
+			}
+		})
+	}()
+	go func() { defer workers.Done(); st.Listen(workerCtx, store.ChanJobDone, log, srv.JobDone) }()
+
 	for i := 0; i < cfg.workers; i++ {
-		w := &worker.Worker{Name: fmt.Sprintf("%s/%d", host, i), Store: st, Coverage: coverage.Calculator{DEM: src}, Log: log}
+		w := &worker.Worker{Name: fmt.Sprintf("%s/%d", host, i), Store: st, Coverage: coverage.Calculator{DEM: src}, Log: log, Wake: wakeCoverage}
 		workers.Add(1)
 		go func() { defer workers.Done(); w.Run(workerCtx) }()
 	}

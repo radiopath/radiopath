@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	pollInterval = 2 * time.Second
+	pollInterval = 10 * time.Second // fallback for a lost job_queued notification
 	jobTimeout   = 10 * time.Minute
 	staleAfter   = 15 * time.Minute
 	maxAttempts  = 3 // a job claimed this often failed its workers (e.g. out of memory) and is not run again
@@ -29,18 +29,21 @@ type Worker struct {
 	Store    *store.Store
 	Coverage coverage.Computer
 	Log      *slog.Logger
+	Wake     <-chan struct{} // a coverage job was queued; without it the worker only polls
 }
 
-// Run claims and computes coverage jobs one at a time, polling when the queue is empty, until ctx is cancelled.
+// Run claims and computes coverage jobs one at a time until ctx is cancelled; with the queue empty it waits for a
+// wake-up or the next poll.
 func (w *Worker) Run(ctx context.Context) {
 	w.Log.Info("worker started", "name", w.Name)
 	for {
-		j, err := w.Store.ClaimJob(ctx, w.Name, []string{store.KindCoverage}, staleAfter)
+		j, err := w.Store.ClaimJob(ctx, w.Name, true, staleAfter)
 		switch {
 		case errors.Is(err, store.ErrNotFound):
 			select {
 			case <-ctx.Done():
 				return
+			case <-w.Wake:
 			case <-time.After(pollInterval):
 			}
 			continue
@@ -114,7 +117,7 @@ func (w *Worker) run(ctx context.Context, job int64, c store.CoverageWithSite) {
 		if err := w.Store.RequeueJob(dbCtx, job); err != nil {
 			log.Error("requeue", "err", err)
 		}
-		metrics.CoverageJobs.WithLabelValues("requeued").Inc()
+		metrics.Jobs.WithLabelValues(store.KindCoverage, "requeued").Inc()
 		log.Info("job requeued on shutdown")
 		return
 	}
@@ -126,7 +129,7 @@ func (w *Worker) run(ctx context.Context, job int64, c store.CoverageWithSite) {
 		if dbErr := w.Store.FailJob(dbCtx, job, reason); dbErr != nil {
 			log.Error("mark failed", "err", dbErr)
 		}
-		metrics.CoverageJobs.WithLabelValues("failed").Inc()
+		metrics.Jobs.WithLabelValues(store.KindCoverage, "failed").Inc()
 		log.Warn("job failed", "err", err)
 		return
 	}
@@ -142,7 +145,7 @@ func (w *Worker) run(ctx context.Context, job int64, c store.CoverageWithSite) {
 		log.Error("save result", "err", err)
 		return
 	}
-	metrics.CoverageJobs.WithLabelValues("done").Inc()
-	metrics.CoverageJobDuration.Observe(elapsed.Seconds())
+	metrics.Jobs.WithLabelValues(store.KindCoverage, "done").Inc()
+	metrics.JobDuration.WithLabelValues(store.KindCoverage).Observe(elapsed.Seconds())
 	log.Info("job done", "pixels", res.W, "radials", res.Radials, "ms", elapsed.Milliseconds())
 }

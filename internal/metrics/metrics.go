@@ -19,16 +19,16 @@ var (
 )
 
 var (
-	CoverageJobs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "radiopath_coverage_jobs_total",
-		Help: "Finished coverage jobs by result: done, failed or requeued.",
-	}, []string{"result"})
+	Jobs = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "radiopath_jobs_total",
+		Help: "Finished jobs by kind and result: done, failed or requeued.",
+	}, []string{"kind", "result"})
 
-	CoverageJobDuration = promauto.NewHistogram(prometheus.HistogramOpts{
-		Name:    "radiopath_coverage_job_duration_seconds",
-		Help:    "Compute time of a successful coverage job.",
-		Buckets: []float64{1, 2.5, 5, 10, 30, 60, 120, 300, 600},
-	})
+	JobDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "radiopath_job_duration_seconds",
+		Help:    "Compute time of a successful job by kind.",
+		Buckets: []float64{0.01, 0.05, 0.25, 1, 2.5, 5, 10, 30, 60, 120, 300, 600},
+	}, []string{"kind"})
 )
 
 var (

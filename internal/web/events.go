@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	eventPoll         = time.Second
+	eventPoll         = 2 * time.Second // fallback for a missed job_done notification
 	eventMaxLife      = 15 * time.Minute
 	maxStreamsPerUser = 5
 )
@@ -56,7 +56,7 @@ func newJobEvent(j store.Job) jobEvent {
 	return e
 }
 
-// coverageEvents streams a coverage job's state as server-sent events, sending on change and ending when the job is done, the client leaves or eventMaxLife passes.
+// coverageEvents streams a coverage job's state as server-sent events, sending on change and ending when the job is done, the client leaves or eventMaxLife passes; it waits for the job_done notification and polls as a fallback.
 func (s *Server) coverageEvents(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
@@ -85,8 +85,6 @@ func (s *Server) coverageEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	deadline := time.After(eventMaxLife)
-	tick := time.NewTicker(eventPoll)
-	defer tick.Stop()
 	var last jobEvent
 	first := true
 	for {
@@ -109,10 +107,13 @@ func (s *Server) coverageEvents(w http.ResponseWriter, r *http.Request) {
 		}
 		select {
 		case <-r.Context().Done():
+			s.waits.forget(j.ID)
 			return
 		case <-deadline:
+			s.waits.forget(j.ID)
 			return
-		case <-tick.C:
+		case <-s.waits.wait(j.ID):
+		case <-time.After(eventPoll):
 		}
 	}
 }

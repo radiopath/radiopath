@@ -20,6 +20,7 @@ var (
 	linksDesc     = prometheus.NewDesc("radiopath_links", "Stored links.", nil, nil)
 	sessionsDesc  = prometheus.NewDesc("radiopath_sessions_active", "Sessions that have not expired.", nil, nil)
 	coveragesDesc = prometheus.NewDesc("radiopath_coverages", "Coverages by job state.", []string{"job_state"}, nil)
+	jobsDesc      = prometheus.NewDesc("radiopath_jobs", "Jobs in the queue table by kind and state.", []string{"kind", "state"}, nil)
 )
 
 type dbCollector struct {
@@ -34,6 +35,7 @@ func (c dbCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- linksDesc
 	ch <- sessionsDesc
 	ch <- coveragesDesc
+	ch <- jobsDesc
 }
 
 // Collect queries the database stats and emits gauges; on error it logs and emits nothing.
@@ -54,6 +56,9 @@ func (c dbCollector) Collect(ch chan<- prometheus.Metric) {
 	g(sessionsDesc, st.Sessions)
 	for _, state := range []string{store.JobIdle, store.JobQueued, store.JobRunning, store.JobDone, store.JobFailed} {
 		g(coveragesDesc, st.Coverages[state], state)
+	}
+	for _, j := range st.Jobs {
+		g(jobsDesc, j.N, j.Kind, j.State)
 	}
 }
 
