@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-25
+
+> With the Helm chart, update to 2.2.0 together with this image: it runs web pods in `RADIOPATH_MODE=web` (no datasets, less memory) and worker pods in `RADIOPATH_MODE=worker` with the HF data set, which the workers compute from now on. An older chart leaves the workers without HF data, and HF answers 503 until both are updated.
+
 ### Added
 - `RADIOPATH_MODE` splits the process: `web` serves the app and the API without datasets, S3 or `/tmp` and computes nothing; `worker` computes coverages, link analyses and HF with the datasets and serves only `/healthz` and `/readyz`; `all` (the default) does both as before (by @HB9HIL)
 
