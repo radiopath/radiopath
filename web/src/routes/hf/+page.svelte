@@ -52,7 +52,16 @@
 		{ id: 'ft4', label: 'FT4', modulation: 'digital', bandwidth_hz: '83.3', required_snr_db: '-3' }
 	] as const;
 
-	let v = $state({
+	// The form of the last visit; nothing is stored on the server, so the browser keeps it.
+	const storageKey = 'hf-form';
+	const saved: Record<string, unknown> = (() => {
+		try {
+			return JSON.parse(localStorage.getItem(storageKey) ?? '{}') ?? {};
+		} catch {
+			return {};
+		}
+	})();
+	const defaults = {
 		site_a_id: '',
 		site_b_id: '',
 		range_start: now.toISOString().slice(0, 7),
@@ -82,6 +91,10 @@
 		tw_ms: '0',
 		fw_hz: '0',
 		long_path: false
+	};
+	let v = $state({
+		...defaults,
+		...Object.fromEntries(Object.entries(saved).filter(([k, x]) => k in defaults && typeof x === typeof defaults[k as keyof typeof defaults]))
 	});
 	let busy = $state(false);
 	// "Predicting 3 of 12…" while the months of a range run one after the other.
@@ -109,7 +122,7 @@
 	const mode = $derived(modes.find((m) => m.id === v.mode));
 
 	// The smoothed sunspot number of the first month from NOAA SWPC; a 404 (no data on the server) just leaves the field alone.
-	let ssnEdited = $state(false);
+	let ssnEdited = $state(saved.ssnEdited === true);
 	const sunWhen = $derived.by(() => {
 		const i = monthIndex(v.range_start);
 		return { year: Math.floor(i / 12), month: (i % 12) + 1 };
@@ -133,12 +146,26 @@
 		if (sunspot.data && !ssnEdited) v.ssn = String(sunspot.data.ssn);
 	});
 
-	// A new prediction starts from the first two sites.
+	// A new prediction starts from the first two sites; a remembered site or antenna that is gone falls back too.
 	$effect(() => {
 		const list = sites.data;
 		if (!list?.length) return;
-		if (!v.site_a_id) v.site_a_id = String(list[0].id);
-		if (!v.site_b_id) v.site_b_id = String(list[Math.min(1, list.length - 1)].id);
+		if (!list.some((s) => String(s.id) === v.site_a_id)) v.site_a_id = String(list[0].id);
+		if (!list.some((s) => String(s.id) === v.site_b_id)) v.site_b_id = String(list[Math.min(1, list.length - 1)].id);
+	});
+	$effect(() => {
+		const list = antennas.data;
+		if (!list) return;
+		for (const k of ['tx_antenna_id', 'rx_antenna_id'] as const) if (v[k] && !list.some((a) => String(a.id) === v[k])) v[k] = '';
+	});
+
+	// Remembers the form for the next visit.
+	$effect(() => {
+		try {
+			localStorage.setItem(storageKey, JSON.stringify({ ...v, ssnEdited }));
+		} catch {
+			// private window or storage blocked: the form just starts fresh next time
+		}
 	});
 
 	/** Asks the server for the smoothed sunspot number of a month. */
@@ -386,6 +413,15 @@
 		}
 	}
 
+	/** A power typed in dBm as "= 100 W" or "= 500 mW"; empty when it is no number. */
+	function watts(dbm: string): string {
+		const w = 10 ** ((parseNum(dbm) - 30) / 10);
+		if (isNaN(w)) return '';
+		if (w >= 1000) return `= ${(w / 1000).toFixed(1)} kW`;
+		if (w >= 1) return `= ${w.toFixed(w < 10 ? 1 : 0)} W`;
+		return `= ${(w * 1000).toFixed(0)} mW`;
+	}
+
 	/** A model value as text; the API's -307 means the quantity does not apply to the path. */
 	function val(x: number, digits = 1): string {
 		return x === -307 ? '–' : x.toFixed(digits);
@@ -524,7 +560,13 @@
 				{maxMonths}) is one prediction.
 			</p>
 			<Field wide label="Sunspot number (R12)">
-				<Input class="max-w-68 font-mono" name="ssn" inputmode="numeric" bind:value={v.ssn} oninput={() => (ssnEdited = true)} />
+				<Input
+					class="max-w-68 font-mono"
+					name="ssn"
+					inputmode="numeric"
+					bind:value={v.ssn}
+					oninput={(e) => (ssnEdited = e.currentTarget.value.trim() !== '')}
+				/>
 			</Field>
 			{#if sunspot.data}
 				<p class="text-xs text-muted-foreground" data-testid="ssn-source">
@@ -536,9 +578,12 @@
 		</fieldset>
 		<fieldset class="grid gap-3">
 			<legend class="mb-2 w-full border-b pb-1 text-xs font-medium text-muted-foreground">Stations</legend>
-			<Field wide label="TX power (dBm)"
-				><Input class="max-w-68 font-mono" name="tx_power_dbm" inputmode="decimal" bind:value={v.tx_power_dbm} /></Field
-			>
+			<Field wide label="TX power (dBm)">
+				<span class="flex items-center gap-2">
+					<Input class="max-w-68 font-mono" name="tx_power_dbm" inputmode="decimal" bind:value={v.tx_power_dbm} />
+					<span class="text-xs text-muted-foreground">{watts(v.tx_power_dbm)}</span>
+				</span>
+			</Field>
 			{#each [['tx_antenna_id', 'tx_gain_dbi', 'tx_azimuth_deg', 'TX'], ['rx_antenna_id', 'rx_gain_dbi', 'rx_azimuth_deg', 'RX']] as const as [ant, gain, az, label] (ant)}
 				{@const sel = antennas.data?.find((a) => String(a.id) === v[ant])}
 				<Field wide label="{label} antenna">

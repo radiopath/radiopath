@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - The HF page sums a prediction up in four tiles above the map: path length, the most reliable hour and frequency, the span of the median MUF over the day and the sunspot number used; the reliability cells of the table carry the colour of the map (by @HB9HIL)
 - The HF page scrolls to the results when a prediction is done, counts the months of a range on the button while they run, and says so above the results when the form changed since they were predicted (by @HB9HIL)
+- The HF page remembers its form in the browser (nothing is stored on the server), shows the TX power in watts next to the dBm field, and fills the sunspot number from NOAA again when the typed one is cleared (by @HB9HIL)
 
 ### Changed
 - The HF page asks for the time one way: a first and a last month (the same for one month) and the hours as from, to and every, which used to be the "several months" mode only; the year, month and hour list fields are gone and a prediction covers every hour of the day by default (by @HB9HIL)

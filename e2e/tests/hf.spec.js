@@ -213,6 +213,24 @@ test('fills the sunspot number from the server until it is typed', async ({ page
   await expect(page.getByTestId('ssn-source')).toContainText(String(100 + m2))
   await expect(page.locator('[name=ssn]')).toHaveValue('120')
   expect(asked).toContain(`${ym(1).year}-${m1}`)
+
+  // an emptied field is filled again
+  await page.locator('[name=ssn]').fill('')
+  await expect(page.locator('[name=ssn]')).toHaveValue(String(100 + m2))
+})
+
+test('remembers the form in the browser', async ({ page }) => {
+  await page.goto('/hf')
+  await expect(page.getByText('= 100 W')).toBeVisible()
+  await page.locator('[name=frequencies_mhz]').fill('3.5')
+  await page.locator('[name=tx_power_dbm]').fill('43')
+  await page.locator('[name=mode]').selectOption('ft8')
+  await expect(page.getByText('= 20 W')).toBeVisible()
+  await page.reload()
+  await expect(page.locator('[name=frequencies_mhz]')).toHaveValue('3.5')
+  await expect(page.locator('[name=tx_power_dbm]')).toHaveValue('43')
+  await expect(page.locator('[name=mode]')).toHaveValue('ft8')
+  await expect(page.locator('[name=bandwidth_hz]')).toHaveCount(0)
 })
 
 test('keeps the default sunspot number when the server has no data', async ({ page }) => {
