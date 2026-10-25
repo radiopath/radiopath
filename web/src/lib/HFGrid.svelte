@@ -13,8 +13,14 @@
 	import InfoButton from '$lib/InfoButton.svelte';
 
 	// The prediction at a glance: one grid per frequency, a row per month, a column per hour, the cell coloured by reliability.
-	let { runs, value, selected, onpick }: { runs: GridRun[]; value: (p: HFPoint) => number | null; selected: string; onpick: (key: string) => void } =
-		$props();
+	// hover is the hour under the pointer, shared with the crosshair of the charts.
+	let {
+		runs,
+		value,
+		selected,
+		onpick,
+		hover = $bindable(null)
+	}: { runs: GridRun[]; value: (p: HFPoint) => number | null; selected: string; onpick: (key: string) => void; hover?: number | null } = $props();
 
 	const points = $derived(runs.flatMap((r) => r.points));
 	const freqs = $derived([...new Set(points.map((p) => p.frequency_mhz))].sort((a, b) => a - b));
@@ -42,11 +48,19 @@
 	<h2 class="pr-6 text-sm font-medium">Circuit reliability by hour and frequency</h2>
 	{#each freqs as f (f)}
 		<div class="overflow-x-auto">
-			<table class="w-full border-separate border-spacing-0.5 text-xs" aria-label="Reliability at {f} MHz by month and hour">
+			<table
+				class="w-full border-separate border-spacing-0.5 text-xs"
+				aria-label="Reliability at {f} MHz by month and hour"
+				onpointerleave={() => (hover = null)}
+			>
 				<thead>
 					<tr>
 						<th class="text-left font-medium whitespace-nowrap">{f} MHz</th>
-						{#each hours as h (h)}<th class="font-mono font-normal text-muted-foreground tabular-nums">{String(h).padStart(2, '0')}</th>{/each}
+						{#each hours as h (h)}
+							<th class={['font-mono font-normal tabular-nums', h === hover ? 'text-foreground' : 'text-muted-foreground']}
+								>{String(h).padStart(2, '0')}</th
+							>
+						{/each}
 					</tr>
 				</thead>
 				<tbody>
@@ -68,9 +82,11 @@
 								{@const p = at(r, h, f)}
 								{@const v = p ? value(p) : null}
 								<td
-									class="h-5 min-w-6 rounded-sm text-center font-mono text-[10px] tabular-nums"
+									class={['h-5 min-w-6 rounded-sm text-center font-mono text-[10px] tabular-nums', h === hover && 'outline-2 outline-foreground']}
 									style:background-color={v == null ? undefined : `color-mix(in srgb, ${heat(v)} 70%, transparent)`}
-									title={title(r, h, p, v)}>{v == null ? '–' : v.toFixed(0)}</td
+									title={title(r, h, p, v)}
+									data-hot={h === hover ? '' : undefined}
+									onpointerenter={() => (hover = h)}>{v == null ? '–' : v.toFixed(0)}</td
 								>
 							{/each}
 						</tr>

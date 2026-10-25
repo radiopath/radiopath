@@ -105,7 +105,7 @@
 	// The form as it was when the shown runs were predicted; a difference marks them stale.
 	let ran = $state('');
 	let results: HTMLDivElement | undefined = $state();
-	// The hour under the pointer, shared by both charts as one crosshair.
+	// The hour under the pointer, shared by both charts and the grid as one crosshair.
 	let chartHour = $state<number | null>(null);
 	const stale = $derived(runs != null && JSON.stringify(v) !== ran);
 	// Whether the shown points were predicted with digital modulation, which decides the reliability to show.
@@ -750,7 +750,7 @@
 						bind:hover={chartHour}
 					/>
 				</div>
-				<HFGrid runs={runs ?? []} value={reliabilityValue} selected={run?.key ?? ''} onpick={pickRun} />
+				<HFGrid runs={runs ?? []} value={reliabilityValue} selected={run?.key ?? ''} onpick={pickRun} bind:hover={chartHour} />
 			{:else if runs}
 				<EmptyState icon={Waves}>The model returned no points.</EmptyState>
 			{/if}

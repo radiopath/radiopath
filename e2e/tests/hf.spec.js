@@ -114,8 +114,16 @@ test('draws the MUF and reliability charts', async ({ page }) => {
   await expect(tip).toContainText('MUF, median: 10.0 MHz')
   await expect(tip).toContainText('6.0 to 14.0 MHz')
   await expect(page.getByRole('img', { name: 'Circuit reliability (%)' }).locator('[data-crosshair]')).toHaveCount(1)
+  // the grids mark the column of that hour, and hovering a grid cell moves the crosshair
+  const hot = page.getByRole('region', { name: 'Reliability by hour' }).locator('td[data-hot]')
+  await expect(hot).toHaveCount(2)
+  await expect(hot.first()).toHaveAttribute('title', /06:00|12:00/)
   await page.mouse.move(0, 0)
   await expect(muf.locator('[data-crosshair]')).toHaveCount(0)
+  await expect(hot).toHaveCount(0)
+  await page.getByRole('table', { name: 'Reliability at 7.1 MHz by month and hour' }).locator('tbody td').nth(1).hover()
+  await expect(hot).toHaveCount(2)
+  await expect(tip).toContainText('06:00 UTC')
 
   // 14.2 MHz has no reliability at 12:00, so three points remain
   const rel = page.getByRole('img', { name: 'Circuit reliability (%)' })
