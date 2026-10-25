@@ -261,9 +261,22 @@ test('predicts every month of a range with the hours from, to and step', async (
   expect(sent[0].hours_utc).toEqual([6, 12, 24])
   await expect(page.locator('[name=period]')).toHaveValue('2026-3')
   await expect(page.locator('[name=period] option')).toHaveText(['March 2026', 'April 2026', 'May 2026'])
-  await expect(page.locator('tbody tr')).toHaveCount(3)
+  const detail = page.locator('table:not([aria-label]) tbody tr')
+  await expect(detail).toHaveCount(3)
   await page.locator('[name=period]').selectOption({ label: 'May 2026' })
-  await expect(page.locator('tbody tr')).toHaveCount(3)
+  await expect(detail).toHaveCount(3)
+
+  // the months at a glance: one grid per frequency, a row per month, a coloured cell per hour; a month is picked by its name
+  const glance = page.getByRole('region', { name: 'Months at a glance' })
+  const grid = glance.getByRole('table', { name: 'Reliability at 7.1 MHz by month and hour' })
+  await expect(glance.getByRole('table')).toHaveCount(1)
+  await expect(grid.locator('thead th')).toHaveText(['7.1 MHz', '06', '12', '24'])
+  await expect(grid.locator('tbody tr')).toHaveCount(3)
+  await expect(grid.locator('tbody td[style*=background-color]')).toHaveCount(9)
+  await expect(grid.getByRole('button', { name: 'May 2026' })).toHaveAttribute('aria-current', 'true')
+  await grid.getByRole('button', { name: 'April 2026' }).click()
+  await expect(page.locator('[name=period]')).toHaveValue('2026-4')
+  await expect(page.getByRole('heading', { name: 'Prediction by hour and frequency, April 2026' })).toBeVisible()
 })
 
 test('rejects a range that ends before it starts or has a bad hour window', async ({ page }) => {

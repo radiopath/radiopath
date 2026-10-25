@@ -12,6 +12,7 @@
 	import Field from '$lib/Field.svelte';
 	import FormErrors from '$lib/FormErrors.svelte';
 	import HFHeatmap, { heat } from '$lib/HFHeatmap.svelte';
+	import HFYearGrid from '$lib/HFYearGrid.svelte';
 	import LineChart, { type Pt } from '$lib/LineChart.svelte';
 	import { invalid, notifyError } from '$lib/notify';
 	import PageHead from '$lib/PageHead.svelte';
@@ -673,6 +674,7 @@
 				<Notice>The form changed since this prediction; predict again to see the effect.</Notice>
 			{/if}
 			{#if runs && runs.length > 1}
+				<HFYearGrid {runs} value={reliabilityValue} selected={run?.key ?? ''} onpick={pickRun} />
 				<label class="flex items-center gap-3 text-sm">
 					<span class="text-muted-foreground">Month shown</span>
 					<NativeSelect class="w-48" name="period" value={run?.key} onchange={(e) => pickRun(e.currentTarget.value)}>
