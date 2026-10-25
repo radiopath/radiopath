@@ -16,7 +16,7 @@ import (
 // testDirs returns the directory with the ITU data files (see
 // scripts/fetch-hf-data.sh) and the one with the reference vectors of the C
 // code, or skips the test when the data is missing.
-func testDirs(t *testing.T) (dataDir, refDir string) {
+func testDirs(t testing.TB) (dataDir, refDir string) {
 	t.Helper()
 	refDir = "testdata"
 	dataDir = filepath.Join("..", "..", "tmp", "testfiles", "hf1")

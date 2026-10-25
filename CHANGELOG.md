@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Chore
+- Benchmarks of an HF prediction and of a reliability map, and a golden test that hashes every reference case bit for bit (`testdata/golden_<arch>.txt`), so performance work on the HF model can prove it left the results alone (by @HB9HIL)
+
 ## [2.0.0] - 2026-10-25
 
 > ⚠️ **Breaking change:** terrain, canopy and HF data now come from one dataset root with a folder per dataset.
