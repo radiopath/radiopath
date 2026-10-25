@@ -105,6 +105,8 @@
 	// The form as it was when the shown runs were predicted; a difference marks them stale.
 	let ran = $state('');
 	let results: HTMLDivElement | undefined = $state();
+	// The hour under the pointer, shared by both charts as one crosshair.
+	let chartHour = $state<number | null>(null);
 	const stale = $derived(runs != null && JSON.stringify(v) !== ran);
 	// Whether the shown points were predicted with digital modulation, which decides the reliability to show.
 	let digitalRun = $state(false);
@@ -737,6 +739,7 @@
 						series={[{ label: 'MUF, median', color: 'var(--cp-fg)', points: mufOver('muf_50_mhz') }]}
 						refs={freqs.map((f, i) => ({ label: `${f} MHz`, color: palette[i % palette.length], y: f }))}
 						info={infoText.muf}
+						bind:hover={chartHour}
 					/>
 					<LineChart
 						title="Circuit reliability"
@@ -744,6 +747,7 @@
 						yMax={100}
 						info={infoText.reliability}
 						series={freqs.map((f, i) => ({ label: `${f} MHz`, color: palette[i % palette.length], points: reliabilityOver(f) }))}
+						bind:hover={chartHour}
 					/>
 				</div>
 				<HFGrid runs={runs ?? []} value={reliabilityValue} selected={run?.key ?? ''} onpick={pickRun} />

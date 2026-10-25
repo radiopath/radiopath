@@ -8,7 +8,8 @@
 <script lang="ts">
 	import InfoButton from '$lib/InfoButton.svelte';
 
-	// A line chart over the hours of a day as inline SVG, so no chart library is needed.
+	// A line chart over the hours of a day as inline SVG, so no chart library is needed. hover is the hour under the
+	// pointer; bound by the page, the charts share one crosshair.
 	let {
 		title,
 		unit,
@@ -16,8 +17,9 @@
 		band,
 		refs = [],
 		yMax,
-		info
-	}: { title: string; unit: string; series: Series[]; band?: Band; refs?: Ref[]; yMax?: number; info?: string } = $props();
+		info,
+		hover = $bindable(null)
+	}: { title: string; unit: string; series: Series[]; band?: Band; refs?: Ref[]; yMax?: number; info?: string; hover?: number | null } = $props();
 
 	const W = 640;
 	const H = 240;
@@ -53,12 +55,47 @@
 	function area(b: Band): string {
 		return [...b.lo, ...[...b.hi].reverse()].map((p) => `${px(p.x)},${py(p.y)}`).join(' ');
 	}
+
+	const xs = $derived([...new Set(series.flatMap((s) => s.points.map((p) => p.x)))].sort((a, b) => a - b));
+
+	/** Moves the crosshair to the plotted hour nearest to the pointer. */
+	function track(e: PointerEvent) {
+		const r = e.currentTarget as SVGSVGElement;
+		const x = ((e.clientX - r.getBoundingClientRect().left) / r.clientWidth) * W;
+		const hour = ((x - m.l) / (W - m.l - m.r)) * 24;
+		hover = xs.length ? xs.reduce((best, h) => (Math.abs(h - hour) < Math.abs(best - hour) ? h : best)) : null;
+	}
+
+	/** The value of a series at the hovered hour, if it has one. */
+	function at(pts: Pt[]): number | undefined {
+		return pts.find((p) => p.x === hover)?.y;
+	}
+
+	/** The rows of the tooltip: every series and the band edges with a value at the hovered hour. */
+	const rows = $derived.by(() => {
+		if (hover == null) return [];
+		const out = series.flatMap((s) => {
+			const y = at(s.points);
+			return y == null ? [] : [{ label: s.label, color: s.color, text: `${y.toFixed(1)} ${unit}` }];
+		});
+		const lo = band && at(band.lo);
+		const hi = band && at(band.hi);
+		if (band && lo != null && hi != null) out.push({ label: band.label, color: band.color, text: `${lo.toFixed(1)} to ${hi.toFixed(1)} ${unit}` });
+		return out;
+	});
 </script>
 
 <figure class="relative rounded-lg border bg-card p-3">
 	<figcaption class="mb-2 pr-6 text-sm font-medium">{title} ({unit}) by UTC hour</figcaption>
 	{#if info}<InfoButton label="About the {title} chart" text={info} />{/if}
-	<svg viewBox="0 0 {W} {H}" class="h-auto w-full" role="img" aria-label="{title} ({unit})">
+	<svg
+		viewBox="0 0 {W} {H}"
+		class="h-auto w-full"
+		role="img"
+		aria-label="{title} ({unit})"
+		onpointermove={track}
+		onpointerleave={() => (hover = null)}
+	>
 		{#each ticks as t (t)}
 			<line x1={m.l} x2={W - m.r} y1={py(t)} y2={py(t)} stroke="var(--cp-line-soft)" />
 			<text x={m.l - 6} y={py(t) + 4} text-anchor="end" font-size="11" class="fill-muted-foreground">{t}</text>
@@ -76,10 +113,31 @@
 		{#each series as s (s.label)}
 			<path d={line(s.points)} fill="none" stroke={s.color} stroke-width="2" />
 			{#each s.points as p (p.x)}
-				<circle cx={px(p.x)} cy={py(p.y)} r="3" fill={s.color}><title>{s.label}: {p.x}:00 UTC, {p.y.toFixed(1)} {unit}</title></circle>
+				<circle cx={px(p.x)} cy={py(p.y)} r={p.x === hover ? 5 : 3} fill={s.color}
+					><title>{s.label}: {p.x}:00 UTC, {p.y.toFixed(1)} {unit}</title></circle
+				>
 			{/each}
 		{/each}
+		{#if hover != null}
+			<line x1={px(hover)} x2={px(hover)} y1={m.t} y2={H - m.b} stroke="var(--cp-fg)" stroke-width="1" stroke-dasharray="3 3" data-crosshair />
+		{/if}
 	</svg>
+	{#if hover != null && rows.length}
+		<div
+			class="pointer-events-none absolute top-10 z-10 rounded-md border bg-popover p-2 text-xs text-popover-foreground shadow-md"
+			style:left={hover <= 12 ? `calc(${(px(hover) / W) * 100}% + 8px)` : undefined}
+			style:right={hover > 12 ? `calc(${100 - (px(hover) / W) * 100}% + 8px)` : undefined}
+			data-tooltip
+		>
+			<p class="mb-1 font-mono font-medium tabular-nums">{String(hover).padStart(2, '0')}:00 UTC</p>
+			{#each rows as r (r.label)}
+				<p class="flex items-center gap-1.5 whitespace-nowrap">
+					<span class="inline-block size-2 rounded-sm" style:background-color={r.color}></span>{r.label}:
+					<span class="font-mono tabular-nums">{r.text}</span>
+				</p>
+			{/each}
+		</div>
+	{/if}
 	<ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
 		{#if band}
 			<li class="flex items-center gap-1.5">

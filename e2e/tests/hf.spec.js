@@ -105,6 +105,18 @@ test('draws the MUF and reliability charts', async ({ page }) => {
   await expect(muf.locator('polygon')).toHaveCount(1)
   await expect(muf.locator('line[stroke-dasharray]')).toHaveCount(2)
 
+  // a crosshair at the nearest plotted hour with the values there, shared by both charts
+  const box = await muf.boundingBox()
+  await muf.hover({ position: { x: box.width * 0.6, y: box.height / 2 } })
+  await expect(muf.locator('[data-crosshair]')).toHaveCount(1)
+  const tip = muf.locator('..').locator('[data-tooltip]')
+  await expect(tip).toContainText('12:00 UTC')
+  await expect(tip).toContainText('MUF, median: 10.0 MHz')
+  await expect(tip).toContainText('6.0 to 14.0 MHz')
+  await expect(page.getByRole('img', { name: 'Circuit reliability (%)' }).locator('[data-crosshair]')).toHaveCount(1)
+  await page.mouse.move(0, 0)
+  await expect(muf.locator('[data-crosshair]')).toHaveCount(0)
+
   // 14.2 MHz has no reliability at 12:00, so three points remain
   const rel = page.getByRole('img', { name: 'Circuit reliability (%)' })
   await expect(rel.locator('circle')).toHaveCount(3)
