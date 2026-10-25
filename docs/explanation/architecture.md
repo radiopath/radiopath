@@ -13,8 +13,19 @@ migrations, the admin templates and the built web app. A pod therefore needs onl
 PostGIS, optionally Valkey for map tiles, and the terrain tiles.
 
 Web and compute can be scaled separately with the same image: pods with `RADIOPATH_WORKERS=0` only serve
-requests, pods with workers also compute coverages. All state is in PostgreSQL (sessions, rate limits, the job
-queue), so any replica can serve any request.
+requests, pods with workers compute. All state is in PostgreSQL (sessions, rate limits, the job queue), so any
+replica can serve any request.
+
+## Jobs
+
+Everything that needs the terrain or HF data runs as a job in the table `jobs`, claimed by workers with `FOR UPDATE
+SKIP LOCKED`: coverages by the coverage workers (`RADIOPATH_WORKERS`, minutes each), link analyses by a pool of
+short-job workers (one per CPU, seconds each), so a long coverage never delays a link. A job carries a snapshot of
+its input (sites, antennas with their patterns, parameters) and the hash of it; a request that asks for the same
+input gets the existing job, so a finished job is the cache of its result for an hour. Coverage jobs are followed
+by the page over the event stream; for everything else the request itself queues the job and waits for it, woken by
+a PostgreSQL notification (`LISTEN/NOTIFY`, polling as a fallback), at most 25 seconds, then it reports the server
+as busy. The API therefore keeps its synchronous shape while the web process computes nothing.
 
 ## Request routing
 

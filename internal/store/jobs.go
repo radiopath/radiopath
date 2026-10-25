@@ -105,6 +105,18 @@ func (s *Store) EnqueueJob(ctx context.Context, owner int64, coverage *int64, ki
 	return j, err
 }
 
+// GetJob returns the job by id; ErrNotFound when it is gone. Callers checked the owner when they queued it.
+func (s *Store) GetJob(ctx context.Context, id int64) (Job, error) {
+	return scanJob(s.pool.QueryRow(ctx, `SELECT `+jobCols+` FROM jobs WHERE id = $1`, id))
+}
+
+// DeleteFinishedJobs removes short jobs that finished or failed more than age ago; coverage jobs stay with their coverage.
+func (s *Store) DeleteFinishedJobs(ctx context.Context, age time.Duration) (int64, error) {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM jobs WHERE kind <> $1 AND state IN ($2, $3) AND finished_at < now() - $4::interval`,
+		KindCoverage, JobDone, JobFailed, age.String())
+	return tag.RowsAffected(), err
+}
+
 // ClaimJob takes the oldest queued job of the class (coverage jobs or every other kind), or a running one started
 // more than stale ago, marks it running for worker and counts the attempt; ErrNotFound when there is none.
 func (s *Store) ClaimJob(ctx context.Context, worker string, coverage bool, stale time.Duration) (Job, error) {

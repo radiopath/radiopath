@@ -336,7 +336,7 @@ export interface paths {
         };
         /**
          * One link with its path analysis
-         * @description Runs the analysis on every call; 60 analyses, reports and raster merges per user and minute.
+         * @description A worker computes the analysis; the result is kept for an hour and served again while the link, its sites and antennas stay the same. 60 analyses, reports and raster merges per user and minute.
          *
          *     API token scope: `links:read`.
          */

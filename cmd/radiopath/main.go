@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -411,16 +412,18 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 	}
 
 	// Notifications wake the workers and the requests that follow a job; both also poll in case one is lost.
-	wakeCoverage := make(chan struct{}, 1)
+	wakeCoverage, wakeShort := make(chan struct{}, 1), make(chan struct{}, 1)
 	workers.Add(2)
 	go func() {
 		defer workers.Done()
 		st.Listen(workerCtx, store.ChanJobQueued, log, func(kind string) {
+			wake := wakeShort
 			if kind == store.KindCoverage {
-				select {
-				case wakeCoverage <- struct{}{}:
-				default:
-				}
+				wake = wakeCoverage
+			}
+			select {
+			case wake <- struct{}{}:
+			default:
 			}
 		})
 	}()
@@ -430,6 +433,15 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 		w := &worker.Worker{Name: fmt.Sprintf("%s/%d", host, i), Store: st, Coverage: coverage.Calculator{DEM: src}, Log: log, Wake: wakeCoverage}
 		workers.Add(1)
 		go func() { defer workers.Done(); w.Run(workerCtx) }()
+	}
+	// Short jobs (link analyses) run next to the coverage workers, one per CPU; a process without coverage workers
+	// computes nothing.
+	if cfg.workers > 0 {
+		for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+			w := &worker.Worker{Name: fmt.Sprintf("%s/short/%d", host, i), Store: st, Compute: srv.RunJob, Log: log, Wake: wakeShort}
+			workers.Add(1)
+			go func() { defer workers.Done(); w.Run(workerCtx) }()
+		}
 	}
 
 	var metricsSrv *http.Server
@@ -469,7 +481,10 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 	return err
 }
 
-// janitor periodically removes expired sessions, rate limits, email tokens, long expired API tokens and unconfirmed users until ctx ends.
+// finishedJobKeep is how long the result of a short job stays as the cache of its input.
+const finishedJobKeep = time.Hour
+
+// janitor periodically removes expired sessions, rate limits, email tokens, long expired API tokens, unconfirmed users and finished short jobs until ctx ends.
 func janitor(ctx context.Context, st *store.Store, log *slog.Logger) {
 	tick := time.NewTicker(janitorInterval)
 	defer tick.Stop()
@@ -481,6 +496,9 @@ func janitor(ctx context.Context, st *store.Store, log *slog.Logger) {
 		}
 		if err := st.DeleteOldRateLimits(ctx); err != nil {
 			log.Warn("rate limit cleanup", "err", err)
+		}
+		if _, err := st.DeleteFinishedJobs(ctx, finishedJobKeep); err != nil {
+			log.Warn("job cleanup", "err", err)
 		}
 		if _, err := st.DeleteExpiredEmailTokens(ctx); err != nil {
 			log.Warn("email token cleanup", "err", err)

@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"math"
 	"net/http"
 	"time"
@@ -227,7 +228,7 @@ func (s *Server) registerLinks(api huma.API) {
 
 	o = op("get-link", http.MethodGet, "/api/links/{id}", scopeLinksRead, "One link with its path analysis")
 	o.Errors = append(o.Errors, http.StatusTooManyRequests)
-	o.Description = "Runs the analysis on every call; 60 analyses, reports and raster merges per user and minute."
+	o.Description = "A worker computes the analysis; the result is kept for an hour and served again while the link, its sites and antennas stay the same. 60 analyses, reports and raster merges per user and minute."
 	huma.Register(api, o,
 		func(ctx context.Context, in *IDPath) (*LinkDetailOutput, error) {
 			if err := s.computeHit(ctx, userOf(ctx).ID); err != nil {
@@ -348,7 +349,8 @@ func (s *Server) sendLinkReport(w http.ResponseWriter, r *http.Request, data lin
 	servePDF(w, data.Link.Name, pdf)
 }
 
-// linkAnalysis runs the path analysis for l; a failed analysis is logged and returned in Error instead of Result.
+// linkAnalysis has the path analysis of l computed by a worker (or takes the result a worker already has for the
+// same input); a failed analysis is returned in Error instead of Result.
 func (s *Server) linkAnalysis(ctx context.Context, l store.LinkWithSites) linkData {
 	data := linkData{Link: l}
 	data.TxAntenna, data.RxAntenna = s.antennaName(ctx, l.OwnerID, l.TxAntennaID), s.antennaName(ctx, l.OwnerID, l.RxAntennaID)
@@ -357,7 +359,7 @@ func (s *Server) linkAnalysis(ctx context.Context, l store.LinkWithSites) linkDa
 	data.TxAzimuthDeg = azimuth(l.TxAzimuthDeg, bearing)
 	data.RxAzimuthDeg = azimuth(l.RxAzimuthDeg, math.Mod(bearing+180, 360))
 
-	res, err := s.Analyzer.Analyze(ctx, link.Input{
+	input, _ := json.Marshal(link.Input{
 		A:             link.Site{Name: l.SiteA.Name, Pos: geo.Point{Lat: l.SiteA.Lat, Lon: l.SiteA.Lon}, AntennaHeightM: l.SiteA.AntennaHeightM},
 		B:             link.Site{Name: l.SiteB.Name, Pos: geo.Point{Lat: l.SiteB.Lat, Lon: l.SiteB.Lon}, AntennaHeightM: l.SiteB.AntennaHeightM},
 		ClutterLossDB: l.ClutterLossDB,
@@ -369,11 +371,23 @@ func (s *Server) linkAnalysis(ctx context.Context, l store.LinkWithSites) linkDa
 			RxPattern: s.pattern(ctx, l.OwnerID, l.RxAntennaID), RxAzimuthDeg: data.RxAzimuthDeg, RxTiltDeg: l.RxTiltDeg,
 		},
 	})
-	if err != nil {
-		s.Log.Warn("link analysis failed", "link", l.ID, "err", err)
-		data.Error = link.Reason(err)
-	} else {
-		data.Result = &res
+	j, err := s.runJob(ctx, l.OwnerID, kindLinkAnalysis, input)
+	switch {
+	case err != nil:
+		if ctx.Err() == nil {
+			s.Log.Warn("link analysis job", "link", l.ID, "err", err)
+		}
+		data.Error = jobReason(err)
+	case j.State == store.JobFailed:
+		data.Error = j.Error
+	default:
+		var res link.Result
+		if err := json.Unmarshal(j.Result, &res); err != nil {
+			s.Log.Error("link analysis result", "link", l.ID, "job", j.ID, "err", err)
+			data.Error = jobReason(err)
+		} else {
+			data.Result = &res
+		}
 	}
 	return data
 }

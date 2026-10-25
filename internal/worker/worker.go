@@ -19,25 +19,35 @@ import (
 
 const (
 	pollInterval = 10 * time.Second // fallback for a lost job_queued notification
-	jobTimeout   = 10 * time.Minute
-	staleAfter   = 15 * time.Minute
-	maxAttempts  = 3 // a job claimed this often failed its workers (e.g. out of memory) and is not run again
+	maxAttempts  = 3                // a job claimed this often failed its workers (e.g. out of memory) and is not run again
+
+	// Coverage jobs take minutes, every other kind seconds; a running job older than stale is taken over.
+	jobTimeout      = 10 * time.Minute
+	staleAfter      = 15 * time.Minute
+	shortTimeout    = 2 * time.Minute
+	shortStaleAfter = 5 * time.Minute
 )
 
+// Worker claims and runs the jobs of one class: coverage jobs with Coverage, or every other kind with Compute.
 type Worker struct {
 	Name     string
 	Store    *store.Store
-	Coverage coverage.Computer
 	Log      *slog.Logger
-	Wake     <-chan struct{} // a coverage job was queued; without it the worker only polls
+	Wake     <-chan struct{} // a job of this class was queued; without it the worker only polls
+	Coverage coverage.Computer
+	Compute  func(ctx context.Context, job store.Job) ([]byte, error) // computes a short job from its input to its JSON result
 }
 
-// Run claims and computes coverage jobs one at a time until ctx is cancelled; with the queue empty it waits for a
-// wake-up or the next poll.
+// Run claims and computes jobs one at a time until ctx is cancelled; with the queue empty it waits for a wake-up or
+// the next poll.
 func (w *Worker) Run(ctx context.Context) {
 	w.Log.Info("worker started", "name", w.Name)
+	coverage, stale := w.Compute == nil, shortStaleAfter
+	if coverage {
+		stale = staleAfter
+	}
 	for {
-		j, err := w.Store.ClaimJob(ctx, w.Name, true, staleAfter)
+		j, err := w.Store.ClaimJob(ctx, w.Name, coverage, stale)
 		switch {
 		case errors.Is(err, store.ErrNotFound):
 			select {
@@ -66,23 +76,68 @@ func (w *Worker) Run(ctx context.Context) {
 			w.Log.Warn("job given up", "job", j.ID, "attempts", j.Attempts)
 			continue
 		}
-		c, err := w.Store.GetCoverage(ctx, j.OwnerID, *j.CoverageID)
-		if err != nil {
-			// the coverage was deleted meanwhile and took its job along
-			if ctx.Err() == nil && !errors.Is(err, store.ErrNotFound) {
-				w.Log.Error("load coverage", "job", j.ID, "err", err)
-			}
-			continue
+		if coverage {
+			w.runCoverage(ctx, j)
+		} else {
+			w.runShort(ctx, j)
 		}
-		w.run(ctx, j.ID, c)
 		if ctx.Err() != nil {
 			return
 		}
 	}
 }
 
-// run computes one claimed job and stores the result or failure; on shutdown it requeues the job instead.
-func (w *Worker) run(ctx context.Context, job int64, c store.CoverageWithSite) {
+// runShort computes a short job with Compute and stores its result or failure; on shutdown it requeues the job instead.
+func (w *Worker) runShort(ctx context.Context, j store.Job) {
+	log := w.Log.With("job", j.ID, "kind", j.Kind)
+	jobCtx, cancel := context.WithTimeout(ctx, shortTimeout)
+	defer cancel()
+	start := time.Now()
+	result, err := w.Compute(jobCtx, j)
+
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer dbCancel()
+	if ctx.Err() != nil {
+		if err := w.Store.RequeueJob(dbCtx, j.ID); err != nil {
+			log.Error("requeue", "err", err)
+		}
+		metrics.Jobs.WithLabelValues(j.Kind, "requeued").Inc()
+		return
+	}
+	if err != nil {
+		reason := link.Reason(err)
+		if errors.Is(jobCtx.Err(), context.DeadlineExceeded) {
+			reason = fmt.Sprintf("The calculation took longer than %s.", shortTimeout)
+		}
+		if dbErr := w.Store.FailJob(dbCtx, j.ID, reason); dbErr != nil {
+			log.Error("mark failed", "err", dbErr)
+		}
+		metrics.Jobs.WithLabelValues(j.Kind, "failed").Inc()
+		log.Warn("job failed", "err", err)
+		return
+	}
+	elapsed := time.Since(start)
+	if err := w.Store.FinishJob(dbCtx, j.ID, result, elapsed); err != nil {
+		log.Error("save result", "err", err)
+		return
+	}
+	metrics.Jobs.WithLabelValues(j.Kind, "done").Inc()
+	metrics.JobDuration.WithLabelValues(j.Kind).Observe(elapsed.Seconds())
+	log.Debug("job done", "ms", elapsed.Milliseconds())
+}
+
+// runCoverage computes one claimed coverage job and stores the result or failure on the coverage; on shutdown it
+// requeues the job instead.
+func (w *Worker) runCoverage(ctx context.Context, j store.Job) {
+	c, err := w.Store.GetCoverage(ctx, j.OwnerID, *j.CoverageID)
+	if err != nil {
+		// the coverage was deleted meanwhile and took its job along
+		if ctx.Err() == nil && !errors.Is(err, store.ErrNotFound) {
+			w.Log.Error("load coverage", "job", j.ID, "err", err)
+		}
+		return
+	}
+	job := j.ID
 	log := w.Log.With("coverage", c.ID, "name", c.Name)
 	log.Info("job started")
 	jobCtx, cancel := context.WithTimeout(ctx, jobTimeout)

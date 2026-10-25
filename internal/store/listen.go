@@ -28,17 +28,18 @@ func (s *Store) Listen(ctx context.Context, channel string, log *slog.Logger, fn
 
 // listen takes a connection, subscribes and delivers notifications until the connection fails or ctx ends.
 func (s *Store) listen(ctx context.Context, channel string, fn func(payload string)) error {
-	conn, err := s.pool.Acquire(ctx)
+	pooled, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return err
 	}
-	// the connection has LISTEN state, so it must not go back into the pool
-	defer conn.Hijack().Close(context.Background())
+	// the connection gets LISTEN state, so it leaves the pool for good
+	conn := pooled.Hijack()
+	defer conn.Close(context.Background())
 	if _, err := conn.Exec(ctx, "LISTEN "+channel); err != nil {
 		return err
 	}
 	for {
-		n, err := conn.Conn().WaitForNotification(ctx)
+		n, err := conn.WaitForNotification(ctx)
 		if err != nil {
 			return err
 		}
