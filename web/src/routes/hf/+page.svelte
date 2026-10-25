@@ -652,9 +652,6 @@
 			{#if stale}
 				<Notice>The form changed since this prediction; predict again to see the effect.</Notice>
 			{/if}
-			{#if runs && shown.length}
-				<HFGrid {runs} value={reliabilityValue} selected={run?.key ?? ''} onpick={pickRun} />
-			{/if}
 			{#if runs && runs.length > 1}
 				<label class="flex items-center gap-3 text-sm">
 					<span class="text-muted-foreground">Month shown</span>
@@ -741,6 +738,7 @@
 						series={freqs.map((f, i) => ({ label: `${f} MHz`, color: palette[i % palette.length], points: reliabilityOver(f) }))}
 					/>
 				</div>
+				<HFGrid runs={runs ?? []} value={reliabilityValue} selected={run?.key ?? ''} onpick={pickRun} />
 			{:else if runs}
 				<EmptyState icon={Waves}>The model returned no points.</EmptyState>
 			{/if}
