@@ -98,15 +98,20 @@ func allocateAntennaMemory(ant *antenna, freqn, azin, elen int) {
 	}
 }
 
-// isotropicPattern fills the pattern with the constant gain g (dBi).
+// isotropicPattern fills the pattern with the constant gain g (dBi). Every azimuth shares one elevation row:
+// the core only reads patterns, and a map builds two antennas per cell.
 func isotropicPattern(ant *antenna, g float64) {
-	allocateAntennaMemory(ant, 1, antAzimuths, antElevations)
-	ant.freqs[0] = 0
-	for i := 0; i < antAzimuths; i++ {
-		for j := 0; j < antElevations; j++ {
-			ant.pattern[0][i][j] = g
-		}
+	row := make([]float64, antElevations)
+	for j := range row {
+		row[j] = g
 	}
+	rows := make([][]float64, antAzimuths)
+	for i := range rows {
+		rows[i] = row
+	}
+	ant.freqn = 1
+	ant.freqs = []float64{0}
+	ant.pattern = [][][]float64{rows}
 	ant.name = "ISOTROPIC"
 }
 
