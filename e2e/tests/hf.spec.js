@@ -167,6 +167,9 @@ test('shows the reliability map with an hour slider', async ({ page }) => {
   await expect(world.locator('circle')).toHaveCount(2)
   await expect(world.locator('path[data-path]')).toHaveCount(1)
   await expect(world.locator('path[data-path]')).not.toHaveAttribute('stroke-dasharray')
+  // the night side of 06:00 UTC: the sun stands at 90° east
+  await expect(world.locator('path[data-night]')).toHaveCount(1)
+  await expect(world.locator('circle[data-sun]')).toHaveAttribute('cx', '270')
   // from site A, at the first frequency, hours in order
   expect(maps[0]).toMatchObject({ site_id: sites.find((s) => s.name === 'HF A').id, frequency_mhz: 7.1, hours_utc: [6, 12] })
 
@@ -176,6 +179,7 @@ test('shows the reliability map with an hour slider', async ({ page }) => {
   await slider.fill('1')
   await expect(panel.getByText('12:00 UTC')).toBeVisible()
   await expect(world.locator('rect[fill^=hsl]').first()).toHaveAttribute('fill', 'hsl(24 75% 45%)')
+  await expect(world.locator('circle[data-sun]')).toHaveAttribute('cx', '180')
 
   await panel.locator('[name=map_frequency]').selectOption('14.2')
   await expect(panel.getByRole('heading')).toContainText('at 14.2 MHz')

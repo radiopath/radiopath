@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - The HF map draws the great circle from A to B, dashed for the long path (by @HB9HIL)
+- The HF map shades the night side of the earth for the hour shown (the 15th of the month, declination by Cooper's formula) and marks the sun (by @HB9HIL)
 - The HF page shows a prediction as one grid per frequency with a row per month and a column per hour: the cell is the reliability, coloured like the map, with SNR, field strength, MUF and propagation mode in its tooltip; clicking a month of a range shows its map and charts (by @HB9HIL)
 - The HF page sums a prediction up in four tiles above the map: path length, the most reliable hour and frequency, the span of the median MUF over the day and the sunspot number used (by @HB9HIL)
 - The HF page scrolls to the results when a prediction is done, counts the months of a range on the button while they run, and says so above the results when the form changed since they were predicted (by @HB9HIL)

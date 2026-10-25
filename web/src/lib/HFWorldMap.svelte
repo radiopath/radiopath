@@ -12,7 +12,7 @@
 	type Pt = { name: string; lat: number; lon: number };
 	// A flat world map, x = longitude and y = latitude, so every cell of the model is a rectangle of the same size.
 	// The land outline is Natural Earth 110m, already projected into the viewBox (scripts/build-land.py).
-	let { tx, rx, map, frame, longPath = false }: { tx: Pt; rx: Pt; map: HFMap; frame: number; longPath?: boolean } = $props();
+	let { tx, rx, map, frame, longPath = false, month }: { tx: Pt; rx: Pt; map: HFMap; frame: number; longPath?: boolean; month: number } = $props();
 
 	const step = $derived(map.step_deg);
 	const values = $derived(map.frames[frame]?.reliability_pct ?? []);
@@ -56,6 +56,28 @@
 	}
 
 	const path = $derived(greatCircle(tx, rx, longPath));
+
+	// The sun on the 15th of the month at the hour shown: declination by Cooper's formula, longitude from the hour (no equation of time, a few degrees).
+	const sun = $derived.by(() => {
+		const day = 15 + Math.round(30.4 * (month - 1));
+		const decl = 23.45 * Math.sin(((2 * Math.PI) / 365) * (284 + day));
+		const hour = map.frames[frame]?.hour_utc ?? 12;
+		return { lat: decl, lon: ((180 - 15 * hour + 540) % 360) - 180 };
+	});
+
+	/** The night side as an SVG path: the terminator across all longitudes, closed over the pole that is dark. */
+	function night(sunLat: number, sunLon: number): string {
+		const rad = Math.PI / 180;
+		// At the equinox the terminator is a meridian pair; a hair of declination keeps the formula finite.
+		const t = Math.tan(Math.max(0.01, Math.abs(sunLat)) * rad) * Math.sign(sunLat || 1);
+		const pts: string[] = [];
+		for (let x = 0; x <= 360; x += 2) {
+			const lat = Math.atan(-Math.cos((x - 180 - sunLon) * rad) / t) / rad;
+			pts.push(`${x} ${py(lat).toFixed(1)}`);
+		}
+		const edge = sunLat > 0 ? 180 : 0;
+		return `M${pts.join('L')}L360 ${edge}L0 ${edge}Z`;
+	}
 </script>
 
 <svg viewBox="0 0 360 180" class="h-auto w-full rounded border" role="img" aria-label="World map">
@@ -76,6 +98,8 @@
 			</rect>
 		{/if}
 	{/each}
+	<path d={night(sun.lat, sun.lon)} data-night fill="var(--cp-fg)" fill-opacity="0.18" />
+	<circle cx={px(sun.lon)} cy={py(sun.lat)} r="2" data-sun fill="var(--cp-warn)"><title>Sun</title></circle>
 	{#if path}
 		<path d={path} data-path fill="none" stroke="var(--cp-fg)" stroke-width="0.8" stroke-dasharray={longPath ? '2 1.5' : undefined} />
 	{/if}

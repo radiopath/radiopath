@@ -685,7 +685,14 @@
 					<FormErrors error={heatError} />
 					{#if heatmap}
 						<div class={heatBusy ? 'opacity-60' : undefined}>
-							<HFWorldMap tx={heatSites.tx} rx={heatSites.rx} map={heatmap} frame={heatFrame} longPath={heatBody?.long_path ?? false} />
+							<HFWorldMap
+								tx={heatSites.tx}
+								rx={heatSites.rx}
+								map={heatmap}
+								frame={heatFrame}
+								longPath={heatBody?.long_path ?? false}
+								month={heatBody?.month ?? 6}
+							/>
 						</div>
 						{@const hour = String(heatmap.frames[heatFrame]?.hour_utc ?? '').padStart(2, '0')}
 						{#if heatmap.frames.length > 1}
@@ -713,7 +720,8 @@
 						</div>
 						<p class="text-xs text-muted-foreground">
 							Circuit reliability from A (TX) to the centre of each {heatmap.step_deg}° cell, B (RX) is marked for reference. Antennas count as
-							isotropic with their main lobe gain. Cells without colour could not be calculated.
+							isotropic with their main lobe gain. Cells without colour could not be calculated. The shade is the night side on the 15th of the month
+							at that hour.
 						</p>
 					{:else if heatBusy}
 						<Skeleton class="h-64 w-full" />
