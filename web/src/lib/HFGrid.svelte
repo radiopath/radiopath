@@ -57,7 +57,7 @@
 					<tr>
 						<th class="text-left font-medium whitespace-nowrap">{f} MHz</th>
 						{#each hours as h (h)}
-							<th class={['font-mono font-normal tabular-nums', h === hover ? 'text-foreground' : 'text-muted-foreground']}
+							<th class={['font-mono tabular-nums', h === hover ? 'font-medium text-foreground underline' : 'font-normal text-muted-foreground']}
 								>{String(h).padStart(2, '0')}</th
 							>
 						{/each}
@@ -82,7 +82,7 @@
 								{@const p = at(r, h, f)}
 								{@const v = p ? value(p) : null}
 								<td
-									class={['h-5 min-w-6 rounded-sm text-center font-mono text-[10px] tabular-nums', h === hover && 'outline-2 outline-foreground']}
+									class="h-5 min-w-6 rounded-sm text-center font-mono text-[10px] tabular-nums"
 									style:background-color={v == null ? undefined : `color-mix(in srgb, ${heat(v)} 70%, transparent)`}
 									title={title(r, h, p, v)}
 									data-hot={h === hover ? '' : undefined}
