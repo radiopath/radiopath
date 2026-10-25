@@ -10,7 +10,7 @@
 	import EmptyState from '$lib/EmptyState.svelte';
 	import Field from '$lib/Field.svelte';
 	import FormErrors from '$lib/FormErrors.svelte';
-	import HFHeatmap, { heat } from '$lib/HFHeatmap.svelte';
+	import HFWorldMap, { heat } from '$lib/HFWorldMap.svelte';
 	import HFGrid from '$lib/HFGrid.svelte';
 	import LineChart, { type Pt } from '$lib/LineChart.svelte';
 	import { invalid, notifyError } from '$lib/notify';
@@ -685,7 +685,7 @@
 					<FormErrors error={heatError} />
 					{#if heatmap}
 						<div class={heatBusy ? 'opacity-60' : undefined}>
-							<HFHeatmap tx={heatSites.tx} rx={heatSites.rx} map={heatmap} frame={heatFrame} />
+							<HFWorldMap tx={heatSites.tx} rx={heatSites.rx} map={heatmap} frame={heatFrame} />
 						</div>
 						{@const hour = String(heatmap.frames[heatFrame]?.hour_utc ?? '').padStart(2, '0')}
 						{#if heatmap.frames.length > 1}

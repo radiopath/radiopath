@@ -159,8 +159,12 @@ test('shows the reliability map with an hour slider', async ({ page }) => {
 
   const panel = page.getByRole('region', { name: 'Reliability map' })
   await expect(panel.getByRole('heading')).toContainText('at 7.1 MHz')
-  await expect(panel.locator('.leaflet-marker-icon')).toHaveCount(2)
-  await expect(panel.locator('canvas')).toHaveCount(1)
+  // a flat SVG world map: a coloured rectangle per cell, the one the model could not calculate is left out; markers A and B
+  const world = panel.getByRole('img', { name: 'World map' })
+  await expect(world).toBeVisible()
+  await expect(world.locator('rect[fill^=hsl]')).toHaveCount(647)
+  await expect(world.locator('rect[fill^=hsl]').first()).toHaveAttribute('fill', 'hsl(96 75% 45%)')
+  await expect(world.locator('circle')).toHaveCount(2)
   // from site A, at the first frequency, hours in order
   expect(maps[0]).toMatchObject({ site_id: sites.find((s) => s.name === 'HF A').id, frequency_mhz: 7.1, hours_utc: [6, 12] })
 
@@ -169,6 +173,7 @@ test('shows the reliability map with an hour slider', async ({ page }) => {
   await expect(panel.getByText('06:00 UTC')).toBeVisible()
   await slider.fill('1')
   await expect(panel.getByText('12:00 UTC')).toBeVisible()
+  await expect(world.locator('rect[fill^=hsl]').first()).toHaveAttribute('fill', 'hsl(24 75% 45%)')
 
   await panel.locator('[name=map_frequency]').selectOption('14.2')
   await expect(panel.getByRole('heading')).toContainText('at 14.2 MHz')

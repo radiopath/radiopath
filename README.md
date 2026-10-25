@@ -54,7 +54,8 @@ commercial license is available, see `COMMERCIAL-LICENSE.md`.
 The ITM port in `internal/itm` derives from NTIA public domain software, see
 `internal/itm/NOTICE`. Bundled into the app:
 Leaflet 1.9.4 (BSD-2), Lucide icons (ISC), JetBrains Mono 2.304 and IBM Plex
-Sans (both SIL OFL 1.1, `web/static/fonts/OFL-*.txt`).
+Sans (both SIL OFL 1.1, `web/static/fonts/OFL-*.txt`), the Natural Earth 110m
+land outline (public domain, `web/src/lib/land.json`).
 
 Data: terrain from the Copernicus DEM GLO-30 (© DLR e.V. 2010-2014 and
 © Airbus Defence and Space GmbH 2014-2018, provided under COPERNICUS by the
