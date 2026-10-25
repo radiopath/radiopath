@@ -184,7 +184,7 @@ test('shows the reliability map with an hour slider', async ({ page }) => {
   await expect(world).toBeVisible()
   await expect(world.locator('rect[fill^=hsl]')).toHaveCount(647)
   await expect(world.locator('rect[fill^=hsl]').first()).toHaveAttribute('fill', 'hsl(96 75% 45%)')
-  await expect(world.locator('circle')).toHaveCount(2)
+  await expect(world.locator('circle:not([data-sun])')).toHaveCount(2)
   await expect(world.locator('path[data-path]')).toHaveCount(1)
   await expect(world.locator('path[data-path]')).not.toHaveAttribute('stroke-dasharray')
   // the night side of 06:00 UTC: the sun stands at 90° east
