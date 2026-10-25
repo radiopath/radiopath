@@ -89,6 +89,8 @@ services:
     environment:
       DATABASE_URL: postgres://radiopath:radiopath@e2e-db:5432/radiopath
       RADIOPATH_DATASET_DIR: /data
+      # no NOAA download from the test stack; hf.spec.js expects a server without sunspot data
+      RADIOPATH_SUNSPOT_URL: ""
       RADIOPATH_METRICS_LISTEN: ""
       RADIOPATH_WORKERS: "1"
       RADIOPATH_LOG_LEVEL: warn

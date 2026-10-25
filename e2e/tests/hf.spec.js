@@ -24,6 +24,14 @@ test('reports fields that are no number', async ({ page }) => {
 })
 
 test('says so when the HF model is not configured', async ({ page }) => {
+  // the server's answer without the data set is covered by the Go tests; here the toast
+  await page.route('**/api/hf/predictions', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/problem+json',
+      json: { title: 'Service Unavailable', status: 503, detail: 'The HF model is not configured on this server' },
+    }),
+  )
   await page.goto('/hf')
   await expect(c(page, 'button', 'Predict')).toBeEnabled()
   await c(page, 'button', 'Predict').click()

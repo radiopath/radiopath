@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Coverage jobs live in a table `jobs` of their own (migration 0023 moves them, the `job_*` columns of a coverage are gone) that is built to hold every kind of job: owner, kind, input snapshot and its hash, state, attempts, result. A coverage shows its newest job; a job claimed three times without finishing fails instead of being taken over again (by @HB9HIL)
 
 ### Chore
+- The e2e stack turns the sunspot download off and the "HF not configured" spec mocks the answer like the other HF specs, so `make e2e` behaves the same whether `tmp/testfiles/hf1` exists on the host or not (by @HB9HIL)
 - Benchmarks of an HF prediction and of a reliability map, and a golden test that hashes every reference case bit for bit (`testdata/golden_<arch>.txt`), so performance work on the HF model can prove it left the results alone (by @HB9HIL)
 
 ## [2.0.0] - 2026-10-25
