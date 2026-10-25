@@ -139,3 +139,45 @@ func TestMissingField(t *testing.T) {
 		t.Errorf("observed value: %+v %v", v, ok)
 	}
 }
+
+// mapCache is a Cache in memory that counts its sets.
+type mapCache struct {
+	m    map[string][]byte
+	sets int
+}
+
+// Get implements Cache.
+func (c *mapCache) Get(_ context.Context, key string) ([]byte, error) { return c.m[key], nil }
+
+// Set implements Cache.
+func (c *mapCache) Set(_ context.Context, key string, val []byte, _ time.Duration) error {
+	c.m[key] = val
+	c.sets++
+	return nil
+}
+
+// TestCache fills the cache on the first refresh; a second source with the same cache needs no server at all.
+func TestCache(t *testing.T) {
+	srv := serve(t, observedJSON, predictedJSON)
+	cache := &mapCache{m: map[string][]byte{}}
+	s := New(srv.URL)
+	s.Cache = cache
+	if err := s.Refresh(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if cache.sets != 2 {
+		t.Fatalf("%d files cached, want 2", cache.sets)
+	}
+	srv.Close()
+	other := New(srv.URL)
+	other.Cache = cache
+	if err := other.Refresh(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := other.Lookup(2026, 3); !ok || v.SSN != 94 {
+		t.Errorf("from the cache: %+v %v", v, ok)
+	}
+	if cache.sets != 2 {
+		t.Errorf("%d sets after a cache hit, want still 2", cache.sets)
+	}
+}

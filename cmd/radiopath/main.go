@@ -363,6 +363,9 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 		srv.Tiles = proxy
 		if cfg.sunspotURL != "" {
 			srv.Sunspots = sunspot.New(cfg.sunspotURL)
+			if proxy.Cache != nil {
+				srv.Sunspots.Cache = proxy.Cache
+			}
 		}
 		if cfg.smtp.Host != "" {
 			srv.Mail = cfg.smtp
