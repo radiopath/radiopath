@@ -685,7 +685,7 @@
 					<FormErrors error={heatError} />
 					{#if heatmap}
 						<div class={heatBusy ? 'opacity-60' : undefined}>
-							<HFWorldMap tx={heatSites.tx} rx={heatSites.rx} map={heatmap} frame={heatFrame} />
+							<HFWorldMap tx={heatSites.tx} rx={heatSites.rx} map={heatmap} frame={heatFrame} longPath={heatBody?.long_path ?? false} />
 						</div>
 						{@const hour = String(heatmap.frames[heatFrame]?.hour_utc ?? '').padStart(2, '0')}
 						{#if heatmap.frames.length > 1}

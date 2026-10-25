@@ -12,7 +12,7 @@
 	type Pt = { name: string; lat: number; lon: number };
 	// A flat world map, x = longitude and y = latitude, so every cell of the model is a rectangle of the same size.
 	// The land outline is Natural Earth 110m, already projected into the viewBox (scripts/build-land.py).
-	let { tx, rx, map, frame }: { tx: Pt; rx: Pt; map: HFMap; frame: number } = $props();
+	let { tx, rx, map, frame, longPath = false }: { tx: Pt; rx: Pt; map: HFMap; frame: number; longPath?: boolean } = $props();
 
 	const step = $derived(map.step_deg);
 	const values = $derived(map.frames[frame]?.reliability_pct ?? []);
@@ -26,6 +26,36 @@
 	function py(lat: number): number {
 		return 90 - lat;
 	}
+
+	/** The great circle from a to b as an SVG path: the short way, or the rest of the circle for the long path; empty for antipodes. */
+	function greatCircle(a: Pt, b: Pt, long: boolean): string {
+		const rad = Math.PI / 180;
+		/** The unit vector of a position on the sphere. */
+		const vec = (p: Pt) => [Math.cos(p.lat * rad) * Math.cos(p.lon * rad), Math.cos(p.lat * rad) * Math.sin(p.lon * rad), Math.sin(p.lat * rad)];
+		const va = vec(a);
+		const vb = vec(b);
+		const d = Math.acos(Math.max(-1, Math.min(1, va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2])));
+		if (d < 1e-6 || Math.PI - d < 1e-6) return '';
+		// u is the unit vector at a pointing along the circle towards b, so a point at angle t is a*cos t + u*sin t.
+		const u = vb.map((x, i) => (x - va[i] * Math.cos(d)) / Math.sin(d));
+		const span = long ? -(2 * Math.PI - d) : d;
+		const parts: string[] = [];
+		let prevLon = a.lon;
+		let pen = 'M';
+		for (let i = 0; i <= 180; i++) {
+			const t = (span * i) / 180;
+			const q = va.map((x, j) => x * Math.cos(t) + u[j] * Math.sin(t));
+			const lat = Math.asin(q[2]) / rad;
+			const lon = Math.atan2(q[1], q[0]) / rad;
+			if (Math.abs(lon - prevLon) > 180) pen = 'M';
+			parts.push(`${pen}${px(lon).toFixed(1)} ${py(lat).toFixed(1)}`);
+			pen = 'L';
+			prevLon = lon;
+		}
+		return parts.join('');
+	}
+
+	const path = $derived(greatCircle(tx, rx, longPath));
 </script>
 
 <svg viewBox="0 0 360 180" class="h-auto w-full rounded border" role="img" aria-label="World map">
@@ -46,6 +76,9 @@
 			</rect>
 		{/if}
 	{/each}
+	{#if path}
+		<path d={path} data-path fill="none" stroke="var(--cp-fg)" stroke-width="0.8" stroke-dasharray={longPath ? '2 1.5' : undefined} />
+	{/if}
 	{#each [['A', tx, 'var(--cp-accent)', 'var(--cp-surface)'], ['B', rx, 'var(--cp-surface)', 'var(--cp-accent)']] as const as [end, s, fill, stroke] (end)}
 		<circle cx={px(s.lon)} cy={py(s.lat)} r="2.2" {fill} {stroke} stroke-width="1"><title>{end}: {s.name}</title></circle>
 		<text

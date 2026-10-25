@@ -165,6 +165,8 @@ test('shows the reliability map with an hour slider', async ({ page }) => {
   await expect(world.locator('rect[fill^=hsl]')).toHaveCount(647)
   await expect(world.locator('rect[fill^=hsl]').first()).toHaveAttribute('fill', 'hsl(96 75% 45%)')
   await expect(world.locator('circle')).toHaveCount(2)
+  await expect(world.locator('path[data-path]')).toHaveCount(1)
+  await expect(world.locator('path[data-path]')).not.toHaveAttribute('stroke-dasharray')
   // from site A, at the first frequency, hours in order
   expect(maps[0]).toMatchObject({ site_id: sites.find((s) => s.name === 'HF A').id, frequency_mhz: 7.1, hours_utc: [6, 12] })
 
