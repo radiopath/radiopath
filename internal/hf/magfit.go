@@ -46,6 +46,13 @@ func magfit(here *controlPt, height float64) {
 	fx := 0.0
 	fy := 0.0
 
+	// The same angles in every term; evaluated once, the sums stay identical to the bit.
+	cosLat, sinLat := math.Cos(here.L.lat), math.Sin(here.L.lat)
+	var cosLng, sinLng [7]float64
+	for m := range cosLng {
+		cosLng[m], sinLng[m] = math.Cos(float64(m)*here.L.lng), math.Sin(float64(m)*here.L.lng)
+	}
+
 	for n := 1; n <= 6; n++ {
 		sumz := 0.0
 		sumx := 0.0
@@ -53,26 +60,27 @@ func magfit(here *controlPt, height float64) {
 
 		for m := 0; m <= n; m++ {
 			if n == m {
-				p[m][n] = math.Cos(here.L.lat) * p[m-1][n-1]
-				dp[m][n] = math.Cos(here.L.lat)*dp[m-1][n-1] + math.Sin(here.L.lat)*p[m-1][n-1]
+				p[m][n] = cosLat * p[m-1][n-1]
+				dp[m][n] = cosLat*dp[m-1][n-1] + sinLat*p[m-1][n-1]
 			} else if n != 1 {
-				p[m][n] = math.Sin(here.L.lat)*p[m][n-1] - ct[m][n]*p[m][n-2]
-				dp[m][n] = math.Sin(here.L.lat)*dp[m][n-1] - math.Cos(here.L.lat)*p[m][n-1] - ct[m][n]*dp[m][n-2]
+				p[m][n] = sinLat*p[m][n-1] - ct[m][n]*p[m][n-2]
+				dp[m][n] = sinLat*dp[m][n-1] - cosLat*p[m][n-1] - ct[m][n]*dp[m][n-2]
 			} else {
-				p[m][n] = math.Sin(here.L.lat) * p[m][n-1]
-				dp[m][n] = math.Sin(here.L.lat)*dp[m][n-1] - math.Cos(here.L.lat)*p[m][n-1]
+				p[m][n] = sinLat * p[m][n-1]
+				dp[m][n] = sinLat*dp[m][n-1] - cosLat*p[m][n-1]
 			}
 
 			fm := float64(m)
-			sumz = sumz + p[m][n]*(g[m][n]*math.Cos(fm*here.L.lng)+h[m][n]*math.Sin(fm*here.L.lng))
-			sumx = sumx + dp[m][n]*(g[m][n]*math.Cos(fm*here.L.lng)+h[m][n]*math.Sin(fm*here.L.lng))
-			sumy = sumy + fm*p[m][n]*(g[m][n]*math.Sin(fm*here.L.lng)-h[m][n]*math.Cos(fm*here.L.lng))
+			sumz = sumz + p[m][n]*(g[m][n]*cosLng[m]+h[m][n]*sinLng[m])
+			sumx = sumx + dp[m][n]*(g[m][n]*cosLng[m]+h[m][n]*sinLng[m])
+			sumy = sumy + fm*p[m][n]*(g[m][n]*sinLng[m]-h[m][n]*cosLng[m])
 		}
 
 		fn := float64(n)
-		fz = fz + math.Pow(ar, fn+2)*(fn+1)*sumz
-		fx = fx - math.Pow(ar, fn+2)*sumx
-		fy = fy + math.Pow(ar, fn+2)*sumy
+		arn := math.Pow(ar, fn+2)
+		fz = fz + arn*(fn+1)*sumz
+		fx = fx - arn*sumx
+		fy = fy + arn*sumy
 	}
 
 	// dip and fH can only be calculated for 2 heights in this project

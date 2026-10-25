@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - The HF model builds the 24 hour control point table of a long path (7000 km and more) once per path instead of once per hour and frequency: a prediction of 24 hours and 30 frequencies takes 14 ms instead of 650 ms, a reliability map 1.5 s instead of 9 s of CPU time, with results identical to the bit (by @HB9HIL)
 - An isotropic HF antenna shares one elevation row between its 360 azimuths instead of allocating a 360 x 91 pattern: a reliability map allocates 110 MB instead of 470 MB (by @HB9HIL)
+- The magnetic field series of the HF model evaluates its sines, cosines and powers once per term instead of three times: a prediction takes 8 ms instead of 15 ms, a map 0.7 s instead of 1.5 s of CPU time. The results are identical on amd64; on arm64 the compiler fuses the multiply-adds differently, which can change the last bit (by @HB9HIL)
 
 ### Chore
 - Benchmarks of an HF prediction and of a reliability map, and a golden test that hashes every reference case bit for bit (`testdata/golden_<arch>.txt`), so performance work on the HF model can prove it left the results alone (by @HB9HIL)
