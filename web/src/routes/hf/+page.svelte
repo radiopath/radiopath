@@ -7,12 +7,11 @@
 	import { Input } from '$lib/components/ui/input';
 	import { NativeSelect } from '$lib/components/ui/native-select';
 	import { Skeleton } from '$lib/components/ui/skeleton';
-	import * as Table from '$lib/components/ui/table';
 	import EmptyState from '$lib/EmptyState.svelte';
 	import Field from '$lib/Field.svelte';
 	import FormErrors from '$lib/FormErrors.svelte';
 	import HFHeatmap, { heat } from '$lib/HFHeatmap.svelte';
-	import HFYearGrid from '$lib/HFYearGrid.svelte';
+	import HFGrid from '$lib/HFGrid.svelte';
 	import LineChart, { type Pt } from '$lib/LineChart.svelte';
 	import { invalid, notifyError } from '$lib/notify';
 	import PageHead from '$lib/PageHead.svelte';
@@ -423,21 +422,10 @@
 		return `= ${(w * 1000).toFixed(0)} mW`;
 	}
 
-	/** A model value as text; the API's -307 means the quantity does not apply to the path. */
-	function val(x: number, digits = 1): string {
-		return x === -307 ? '–' : x.toFixed(digits);
-	}
-
 	/** The circuit reliability of a point: the overall one exists only for digital modulation up to 9000 km, the basic one otherwise. */
 	function reliabilityValue(p: HFPoint): number | null {
 		const r = digitalRun && p.distance_km <= 9000 ? p.overall_reliability_pct : p.basic_reliability_pct;
 		return r === -307 ? null : r;
-	}
-
-	/** The reliability of a point as text. */
-	function reliability(p: HFPoint): string {
-		const r = reliabilityValue(p);
-		return r == null ? '–' : r.toFixed(0);
 	}
 
 	// The texts of the info buttons.
@@ -445,9 +433,7 @@
 		muf: 'The MUF (maximum usable frequency) is the highest frequency the ionosphere still bends back to earth on this path at that hour. The solid line is the median, exceeded on half of the days of the month; the band runs from the value exceeded on 90% of the days to the one exceeded on 10%. The dashed lines are your frequencies: below the MUF the signal is usually reflected, above it most of it escapes into space.',
 		reliability:
 			'The share of the days of the month on which the circuit works at that hour: the signal to noise ratio reaches the one your mode needs. Analog modes and paths beyond 9000 km use the basic reliability (signal and noise only); digital modes up to 9000 km use the overall reliability, which also counts multipath and the signal to interference ratio. It is a statistic of the month, not a forecast for one day.',
-		map: 'The reliability of the circuit from site A (TX) to the centre of each 10° cell, for the frequency and the hour chosen: green works on most days, red almost never. Site B (RX) is marked for reference. Use the slider to step through the hours of the month shown.',
-		table:
-			'Propagation mode is the dominant way the signal gets there, for example 2F2: two hops off the F2 layer (none is shown beyond 7000 km). MUF is the median MUF, field is the median field strength at the receiver, SNR the median signal to noise ratio in the bandwidth of your mode. Reliability is the share of days on which the SNR reaches the required one. A dash means the quantity does not apply to the path.'
+		map: 'The reliability of the circuit from site A (TX) to the centre of each 10° cell, for the frequency and the hour chosen: green works on most days, red almost never. Site B (RX) is marked for reference. Use the slider to step through the hours of the month shown.'
 	};
 
 	// One colour per frequency, shared by both charts.
@@ -483,13 +469,6 @@
 			{ label: 'Sunspot number', value: String(run?.body.ssn ?? '–'), sub: 'R12 used by the model' }
 		];
 	}
-
-	/** The background of a reliability cell: the colour of the map, toned down so the text stays readable. */
-	function heatCell(p: HFPoint): string | undefined {
-		const r = reliabilityValue(p);
-		return r == null ? undefined : `background-color: color-mix(in srgb, ${heat(r)} 55%, transparent)`;
-	}
-
 	/** The MUF of one kind over the hours; the MUF does not depend on the frequency, so the first point of an hour tells it. */
 	function mufOver(key: 'muf_10_mhz' | 'muf_50_mhz' | 'muf_90_mhz'): Pt[] {
 		return hours.flatMap((h) => {
@@ -673,14 +652,16 @@
 			{#if stale}
 				<Notice>The form changed since this prediction; predict again to see the effect.</Notice>
 			{/if}
+			{#if runs && shown.length}
+				<HFGrid {runs} value={reliabilityValue} selected={run?.key ?? ''} onpick={pickRun} />
+			{/if}
 			{#if runs && runs.length > 1}
-				<HFYearGrid {runs} value={reliabilityValue} selected={run?.key ?? ''} onpick={pickRun} />
 				<label class="flex items-center gap-3 text-sm">
 					<span class="text-muted-foreground">Month shown</span>
 					<NativeSelect class="w-48" name="period" value={run?.key} onchange={(e) => pickRun(e.currentTarget.value)}>
 						{#each runs as r (r.key)}<option value={r.key}>{r.label}</option>{/each}
 					</NativeSelect>
-					<span class="text-xs text-muted-foreground">for the map, the charts and the table</span>
+					<span class="text-xs text-muted-foreground">for the map and the charts</span>
 				</label>
 			{/if}
 			{#if shown.length}
@@ -760,44 +741,6 @@
 						series={freqs.map((f, i) => ({ label: `${f} MHz`, color: palette[i % palette.length], points: reliabilityOver(f) }))}
 					/>
 				</div>
-				<div class="relative rounded-lg border bg-card">
-					<InfoButton label="About the table" text={infoText.table} />
-					<h2 class="border-b px-3 py-2 pr-8 text-sm font-medium">
-						Prediction by hour and frequency{runs && runs.length > 1 ? `, ${run?.label}` : ''}
-					</h2>
-					<Table.Root>
-						<Table.Header>
-							<Table.Row>
-								<Table.Head>Hour</Table.Head>
-								<Table.Head class="text-right">MHz</Table.Head>
-								<Table.Head>Propagation mode</Table.Head>
-								<Table.Head class="hidden text-right sm:table-cell">MUF (MHz)</Table.Head>
-								<Table.Head class="hidden text-right sm:table-cell">Field (dBµV/m)</Table.Head>
-								<Table.Head class="text-right">SNR (dB)</Table.Head>
-								<Table.Head class="text-right">Reliability</Table.Head>
-							</Table.Row>
-						</Table.Header>
-						<Table.Body>
-							{#each shown as p (`${p.hour_utc}-${p.frequency_mhz}`)}
-								<Table.Row>
-									<Table.Cell class="font-mono tabular-nums">{String(p.hour_utc).padStart(2, '0')}:00</Table.Cell>
-									<Table.Cell class="text-right font-mono tabular-nums">{p.frequency_mhz}</Table.Cell>
-									<Table.Cell>{p.distance_km > 7000 ? '–' : p.dominant_mode}</Table.Cell>
-									<Table.Cell class="hidden text-right font-mono tabular-nums sm:table-cell">{val(p.muf_50_mhz)}</Table.Cell>
-									<Table.Cell class="hidden text-right font-mono tabular-nums sm:table-cell">{val(p.field_strength_dbuv_m)}</Table.Cell>
-									<Table.Cell class="text-right font-mono tabular-nums">{val(p.snr_db)}</Table.Cell>
-									<Table.Cell class="text-right font-mono tabular-nums" style={heatCell(p)}>{reliability(p)} %</Table.Cell>
-								</Table.Row>
-							{/each}
-						</Table.Body>
-					</Table.Root>
-				</div>
-				<p class="text-xs text-muted-foreground">
-					Median values; MUF is exceeded on 50% of the days. A dash means the quantity does not apply to the path.
-					{#if shown[0].distance_km > 7000}
-						Beyond 7000 km the model gives the field strength of the whole path, not of single modes, so there is no propagation mode.
-					{/if}
-				</p>
 			{:else if runs}
 				<EmptyState icon={Waves}>The model returned no points.</EmptyState>
 			{/if}

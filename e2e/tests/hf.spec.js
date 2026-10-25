@@ -110,10 +110,17 @@ test('draws the MUF and reliability charts', async ({ page }) => {
   await expect(rel.locator('circle')).toHaveCount(3)
   await expect(rel.locator('..').locator('li', { hasText: '14.2 MHz' })).toBeVisible()
 
-  await expect(c(page, 'tr', '06:00')).toContainText('2F2')
-  // the reliability cells carry the colour of the map, the one without a value stays plain
-  await expect(page.locator('tbody tr', { hasText: '06:00' }).locator('td[style*=background-color]')).toHaveCount(2)
-  await expect(page.locator('tbody tr', { hasText: '12:00' }).locator('td[style*=background-color]')).toHaveCount(1)
+  // one grid per frequency with the month as its only row; the cells carry the colour of the map, the one without a value stays plain
+  // the row is labelled by the month asked for, the current one
+  const month = `${new Date().toLocaleString('en', { month: 'long', timeZone: 'UTC' })} ${new Date().getUTCFullYear()}`
+  const grids = page.getByRole('region', { name: 'Reliability by hour' })
+  await expect(grids.getByRole('table')).toHaveCount(2)
+  const g14 = grids.getByRole('table', { name: 'Reliability at 14.2 MHz by month and hour' })
+  await expect(g14.locator('thead th')).toHaveText(['14.2 MHz', '06', '12'])
+  await expect(g14.locator('tbody tr')).toHaveCount(1)
+  await expect(g14.locator('tbody td')).toHaveText([month, '80', '–'])
+  await expect(g14.locator('tbody td[style*=background-color]')).toHaveCount(1)
+  await expect(g14.locator('tbody td').nth(1)).toHaveAttribute('title', `${month}, 06:00 UTC: 80 %, SNR 18.0 dB, field 30.0 dBµV/m, MUF 13.0 MHz, 2F2`)
   await expect(page.getByText('2000 km', { exact: true })).toBeVisible()
   await expect(page.getByText('7.1 MHz at 06:00')).toBeVisible()
   await expect(page.getByText('80 % of the days')).toBeVisible()
@@ -261,13 +268,10 @@ test('predicts every month of a range with the hours from, to and step', async (
   expect(sent[0].hours_utc).toEqual([6, 12, 24])
   await expect(page.locator('[name=period]')).toHaveValue('2026-3')
   await expect(page.locator('[name=period] option')).toHaveText(['March 2026', 'April 2026', 'May 2026'])
-  const detail = page.locator('table:not([aria-label]) tbody tr')
-  await expect(detail).toHaveCount(3)
   await page.locator('[name=period]').selectOption({ label: 'May 2026' })
-  await expect(detail).toHaveCount(3)
 
-  // the months at a glance: one grid per frequency, a row per month, a coloured cell per hour; a month is picked by its name
-  const glance = page.getByRole('region', { name: 'Months at a glance' })
+  // one grid per frequency, a row per month, a coloured cell per hour; a month is picked by its name
+  const glance = page.getByRole('region', { name: 'Reliability by hour' })
   const grid = glance.getByRole('table', { name: 'Reliability at 7.1 MHz by month and hour' })
   await expect(glance.getByRole('table')).toHaveCount(1)
   await expect(grid.locator('thead th')).toHaveText(['7.1 MHz', '06', '12', '24'])
@@ -276,7 +280,7 @@ test('predicts every month of a range with the hours from, to and step', async (
   await expect(grid.getByRole('button', { name: 'May 2026' })).toHaveAttribute('aria-current', 'true')
   await grid.getByRole('button', { name: 'April 2026' }).click()
   await expect(page.locator('[name=period]')).toHaveValue('2026-4')
-  await expect(page.getByRole('heading', { name: 'Prediction by hour and frequency, April 2026' })).toBeVisible()
+  await expect(grid.getByRole('button', { name: 'April 2026' })).toHaveAttribute('aria-current', 'true')
 })
 
 test('rejects a range that ends before it starts or has a bad hour window', async ({ page }) => {
@@ -301,8 +305,8 @@ test('explains the cards with info buttons', async ({ page }) => {
   await expect(page.getByRole('note')).toContainText('share of the days')
   await page.keyboard.press('Escape')
   await expect(page.getByRole('note')).toHaveCount(0)
-  await page.getByRole('button', { name: 'About the table' }).click()
-  await expect(page.getByRole('note')).toContainText('Propagation mode')
-  await page.getByRole('heading', { name: 'Prediction by hour and frequency' }).click()
+  await page.getByRole('button', { name: 'About the reliability grid' }).click()
+  await expect(page.getByRole('note')).toContainText('propagation mode')
+  await page.getByRole('heading', { name: 'Circuit reliability by hour and frequency' }).click()
   await expect(page.getByRole('note')).toHaveCount(0)
 })
