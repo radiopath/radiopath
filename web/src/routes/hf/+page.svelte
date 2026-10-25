@@ -15,6 +15,7 @@
 	import { invalid, notifyError } from '$lib/notify';
 	import PageHead from '$lib/PageHead.svelte';
 	import InfoButton from '$lib/InfoButton.svelte';
+	import StatTiles, { type Tile } from '$lib/StatTiles.svelte';
 
 	const now = new Date();
 	// The model knows a month and the hours of a day, so a range is one prediction per month.
@@ -405,6 +406,39 @@
 	const hours = $derived([...new Set(shown.map((p) => p.hour_utc))].sort((a, b) => a - b));
 	const freqs = $derived([...new Set(shown.map((p) => p.frequency_mhz))].sort((a, b) => a - b));
 
+	/** The key figures of the shown month: path, the most reliable hour and frequency, the span of the median MUF and the sunspot number used. */
+	function tiles(): Tile[] {
+		let best: HFPoint | null = null;
+		let bestR = -1;
+		for (const p of shown) {
+			const r = reliabilityValue(p);
+			if (r != null && r > bestR) [best, bestR] = [p, r];
+		}
+		const mufs = shown.map((p) => p.muf_50_mhz).filter((m) => m !== -307);
+		return [
+			{ label: 'Path length', value: `${shown[0].distance_km.toFixed(0)} km`, sub: run?.body.long_path ? 'long path' : 'short path' },
+			best
+				? {
+						label: 'Most reliable',
+						value: `${best.frequency_mhz} MHz at ${String(best.hour_utc).padStart(2, '0')}:00`,
+						sub: `${bestR.toFixed(0)} % of the days`,
+						tone: bestR >= 50 ? 'ok' : 'bad'
+					}
+				: { label: 'Most reliable', value: '–', sub: 'no reliability on this path' },
+			{
+				label: 'Median MUF over the day',
+				value: mufs.length ? `${Math.min(...mufs).toFixed(1)} to ${Math.max(...mufs).toFixed(1)} MHz` : '–'
+			},
+			{ label: 'Sunspot number', value: String(run?.body.ssn ?? '–'), sub: 'R12 used by the model' }
+		];
+	}
+
+	/** The background of a reliability cell: the colour of the map, toned down so the text stays readable. */
+	function heatCell(p: HFPoint): string | undefined {
+		const r = reliabilityValue(p);
+		return r == null ? undefined : `background-color: color-mix(in srgb, ${heat(r)} 55%, transparent)`;
+	}
+
 	/** The MUF of one kind over the hours; the MUF does not depend on the frequency, so the first point of an hour tells it. */
 	function mufOver(key: 'muf_10_mhz' | 'muf_50_mhz' | 'muf_90_mhz'): Pt[] {
 		return hours.flatMap((h) => {
@@ -583,6 +617,9 @@
 			<span class="text-xs text-muted-foreground">for the map, the charts and the table</span>
 		</label>
 	{/if}
+	{#if shown.length}
+		<StatTiles tiles={tiles()} />
+	{/if}
 	{#if heatSites && (heatmap || heatBusy || heatError)}
 		<section class="relative grid gap-3 rounded-lg border bg-card p-3" aria-label="Reliability map">
 			<InfoButton label="About the reliability map" text={infoText.map} />
@@ -681,15 +718,14 @@
 							<Table.Cell class="hidden text-right font-mono tabular-nums sm:table-cell">{val(p.muf_50_mhz)}</Table.Cell>
 							<Table.Cell class="hidden text-right font-mono tabular-nums sm:table-cell">{val(p.field_strength_dbuv_m)}</Table.Cell>
 							<Table.Cell class="text-right font-mono tabular-nums">{val(p.snr_db)}</Table.Cell>
-							<Table.Cell class="text-right font-mono tabular-nums">{reliability(p)} %</Table.Cell>
+							<Table.Cell class="text-right font-mono tabular-nums" style={heatCell(p)}>{reliability(p)} %</Table.Cell>
 						</Table.Row>
 					{/each}
 				</Table.Body>
 			</Table.Root>
 		</div>
 		<p class="text-xs text-muted-foreground">
-			Path length {shown[0].distance_km.toFixed(0)} km. Median values; MUF is exceeded on 50% of the days. A dash means the quantity does not apply to the
-			path.
+			Median values; MUF is exceeded on 50% of the days. A dash means the quantity does not apply to the path.
 			{#if shown[0].distance_km > 7000}
 				Beyond 7000 km the model gives the field strength of the whole path, not of single modes, so there is no propagation mode.
 			{/if}

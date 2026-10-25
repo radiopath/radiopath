@@ -111,7 +111,12 @@ test('draws the MUF and reliability charts', async ({ page }) => {
   await expect(rel.locator('..').locator('li', { hasText: '14.2 MHz' })).toBeVisible()
 
   await expect(c(page, 'tr', '06:00')).toContainText('2F2')
-  await expect(page.getByText('Path length 2000 km')).toBeVisible()
+  // the reliability cells carry the colour of the map, the one without a value stays plain
+  await expect(page.locator('tbody tr', { hasText: '06:00' }).locator('td[style*=background-color]')).toHaveCount(2)
+  await expect(page.locator('tbody tr', { hasText: '12:00' }).locator('td[style*=background-color]')).toHaveCount(1)
+  await expect(page.getByText('2000 km', { exact: true })).toBeVisible()
+  await expect(page.getByText('7.1 MHz at 06:00')).toBeVisible()
+  await expect(page.getByText('80 % of the days')).toBeVisible()
 })
 
 // a map answer built by hand: a frame per requested hour, one cell the model could not calculate

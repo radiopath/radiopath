@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The HF page sums a prediction up in four tiles above the map: path length, the most reliable hour and frequency, the span of the median MUF over the day and the sunspot number used; the reliability cells of the table carry the colour of the map (by @HB9HIL)
+
 ### Changed
 - The HF page asks for the time one way: a first and a last month (the same for one month) and the hours as from, to and every, which used to be the "several months" mode only; the year, month and hour list fields are gone and a prediction covers every hour of the day by default (by @HB9HIL)
 
