@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-25
+
+> ⚠️ **Breaking change:** terrain, canopy and HF data now come from one dataset root with a folder per dataset.
+> Before updating, replace `RADIOPATH_DEM_*` and `RADIOPATH_CANOPY_*` with the
+> `RADIOPATH_DATASET_*` variables (table in docs/reference/configuration.md) and put the tiles under their dataset
+> folder (`srtm1/`, `canopy1/`, in the image `/data/srtm1` instead of `/data/dem`). A server that still has one of the old
+> variables set refuses to start. With the Helm chart, update to 2.1.0 or later: it uses the new names and gives
+> the pods the `/tmp` volume and memory the HF model needs.
+
 ### Added
 - Log in with the user name or the confirmed address of the account (by @HB9HIL)
 - Personal API tokens for other programs and scripts, under Account → API tokens: access per resource (none, read, read and write), an expiration date or none, shown once, revocable at any time; creating one needs the password and is mailed to the confirmed address (by @HB9HIL)
