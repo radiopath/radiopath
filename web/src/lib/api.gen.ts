@@ -243,6 +243,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/hf/maps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * HF reliability map from a site to every cell of the globe (ITU-R P.533), nothing is stored
+         * @description API token scope: `hf:read`.
+         */
+        post: operations["predict-hf-map"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hf/predictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * HF circuit prediction between two sites (ITU-R P.533), nothing is stored
+         * @description API token scope: `hf:read`.
+         */
+        post: operations["predict-hf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hf/sunspots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Smoothed sunspot number of a month (NOAA SWPC), 404 when the server has none
+         * @description API token scope: `hf:read`.
+         */
+        get: operations["hf-sunspot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/links": {
         parameters: {
             query?: never;
@@ -1033,6 +1093,333 @@ export interface components {
              */
             type: string;
         };
+        HFDigital: {
+            /**
+             * Format: double
+             * @description Required amplitude ratio
+             */
+            a_db: number;
+            /**
+             * Format: double
+             * @description Frequency dispersion at -10 dB of the peak
+             */
+            f0_hz: number;
+            /**
+             * Format: double
+             * @description Frequency window
+             */
+            fw_hz: number;
+            /**
+             * Format: double
+             * @description Required signal-to-interference ratio
+             */
+            required_sir_db: number;
+            /**
+             * Format: double
+             * @description Time spread at -10 dB of the peak
+             */
+            t0_ms: number;
+            /**
+             * Format: double
+             * @description Time window
+             */
+            tw_ms: number;
+        };
+        HFMap: {
+            /** Format: int64 */
+            cols: number;
+            /** @description One frame per requested hour, in the order of the request */
+            frames: components["schemas"]["HFMapFrame"][];
+            /** Format: int64 */
+            rows: number;
+            /**
+             * Format: double
+             * @description Edge of a cell in degrees; the first cell is centred half a step south of 90 N and east of 180 W
+             */
+            step_deg: number;
+        };
+        HFMapFrame: {
+            /** Format: int64 */
+            hour_utc: number;
+            /** @description Circuit reliability in percent per cell, rows from north to south and cells from west to east; -307 where the model could not calculate the cell */
+            reliability_pct: number[];
+        };
+        HFMapInput: {
+            /**
+             * Format: double
+             * @description 0.005 Hz to 3 MHz
+             */
+            bandwidth_hz: number;
+            /** @description Digital modulation parameters; without them the defaults of the ITU program apply (required SIR 10 dB, all others 0) */
+            digital?: components["schemas"]["HFDigital"];
+            /**
+             * Format: double
+             * @description Frequency, 1 to 30 MHz
+             */
+            frequency_mhz: number;
+            /** @description UTC hours, 1 to 24, at most 24 values; the map has one frame per hour */
+            hours_utc: number[];
+            /** @description The long way round the globe instead of the short path */
+            long_path?: boolean;
+            /**
+             * @description analog without a value
+             * @enum {string}
+             */
+            modulation?: "analog" | "digital";
+            /**
+             * Format: int64
+             * @description Month, 1 to 12
+             */
+            month: number;
+            /**
+             * @description Man-made noise environment, ITU-R P.372
+             * @enum {string}
+             */
+            noise_environment: "city" | "residential" | "rural" | "quiet_rural" | "noisy" | "quiet";
+            /**
+             * Format: double
+             * @description Required signal-to-noise ratio, -30 to 200
+             */
+            required_snr_db: number;
+            /**
+             * Format: double
+             * @description Gain of the isotropic antenna at every cell
+             */
+            rx_gain_dbi?: number;
+            /**
+             * Format: int64
+             * @description Transmitting site; the map shows the circuit from it to every cell of the globe
+             */
+            site_id: number;
+            /**
+             * Format: int64
+             * @description Share of the month, 1 to 99
+             */
+            snr_percentile: number;
+            /**
+             * Format: int64
+             * @description 12-month smoothed sunspot number R12, 1 to 311
+             */
+            ssn: number;
+            /**
+             * Format: double
+             * @description Gain of the isotropic antenna at the site
+             */
+            tx_gain_dbi?: number;
+            /**
+             * Format: double
+             * @description Transmitter power in dB(1 kW), -30 to 60
+             */
+            tx_power_dbw: number;
+            /**
+             * Format: int64
+             * @description Year, 1900 to 2100
+             */
+            year: number;
+        };
+        HFPoint: {
+            /**
+             * Format: double
+             * @description Basic circuit reliability
+             */
+            basic_reliability_pct: number;
+            /** Format: double */
+            distance_km: number;
+            /** Format: double */
+            dominant_delay_ms: number;
+            /** Format: double */
+            dominant_elevation_deg: number;
+            /** Format: double */
+            dominant_field_strength_dbuv_m: number;
+            /**
+             * Format: double
+             * @description Basic transmission loss of the dominant mode
+             */
+            dominant_loss_db: number;
+            /** @description For example 2F2, or NONE */
+            dominant_mode: string;
+            /** Format: double */
+            dominant_reflection_height_km: number;
+            /**
+             * Format: double
+             * @description Probability that the dominant mode is supported at the frequency
+             */
+            dominant_supported_pct: number;
+            /**
+             * Format: double
+             * @description Median field strength, dB(1 uV/m)
+             */
+            field_strength_dbuv_m: number;
+            /** Format: double */
+            frequency_mhz: number;
+            /** Format: int64 */
+            hour_utc: number;
+            /** Format: int64 */
+            month: number;
+            /**
+             * Format: double
+             * @description MUF exceeded on 10% of the days of the month
+             */
+            muf_10_mhz: number;
+            /**
+             * Format: double
+             * @description MUF exceeded on 50% of the days of the month
+             */
+            muf_50_mhz: number;
+            /**
+             * Format: double
+             * @description MUF exceeded on 90% of the days of the month
+             */
+            muf_90_mhz: number;
+            /**
+             * Format: double
+             * @description Basic MUF
+             */
+            muf_basic_mhz: number;
+            /**
+             * Format: double
+             * @description Operational MUF
+             */
+            muf_operational_mhz: number;
+            /**
+             * Format: double
+             * @description Total noise, dB above kT0b
+             */
+            noise_db: number;
+            /**
+             * Format: double
+             * @description Overall circuit reliability
+             */
+            overall_reliability_pct: number;
+            /**
+             * Format: double
+             * @description Median available receiver power
+             */
+            rx_power_dbw: number;
+            /**
+             * Format: double
+             * @description Median signal-to-noise ratio
+             */
+            snr_db: number;
+            /**
+             * Format: double
+             * @description Signal-to-noise ratio exceeded for snr_percentile of the month
+             */
+            snr_percentile_db: number;
+        };
+        HFPrediction: {
+            /** @description One point per hour and frequency, ordered by the requested hours, then frequencies. A value of -307 means the quantity does not apply to the path */
+            points: components["schemas"]["HFPoint"][];
+        };
+        HFPredictionInput: {
+            /**
+             * Format: double
+             * @description 0.005 Hz to 3 MHz
+             */
+            bandwidth_hz: number;
+            /** @description Digital modulation parameters; without them the defaults of the ITU program apply (required SIR 10 dB, all others 0) */
+            digital?: components["schemas"]["HFDigital"];
+            /** @description Frequencies, 1 to 30 MHz, at most 30 values */
+            frequencies_mhz: number[];
+            /** @description UTC hours, 1 to 24, at most 24 values */
+            hours_utc: number[];
+            /** @description The long way round the globe instead of the short path */
+            long_path?: boolean;
+            /**
+             * @description analog without a value
+             * @enum {string}
+             */
+            modulation?: "analog" | "digital";
+            /**
+             * Format: int64
+             * @description Month, 1 to 12
+             */
+            month: number;
+            /**
+             * @description Man-made noise environment, ITU-R P.372
+             * @enum {string}
+             */
+            noise_environment: "city" | "residential" | "rural" | "quiet_rural" | "noisy" | "quiet";
+            /**
+             * Format: double
+             * @description Required signal-to-noise ratio, -30 to 200
+             */
+            required_snr_db: number;
+            /**
+             * Format: int64
+             * @description Antenna at B, see tx_antenna_id
+             */
+            rx_antenna_id?: number;
+            /**
+             * Format: double
+             * @description Main lobe azimuth at B; without it the antenna aims at A
+             */
+            rx_azimuth_deg?: number;
+            /**
+             * Format: double
+             * @description Gain of an isotropic antenna at B; ignored with rx_antenna_id
+             */
+            rx_gain_dbi?: number;
+            /**
+             * Format: int64
+             * @description Transmitting site
+             */
+            site_a_id: number;
+            /**
+             * Format: int64
+             * @description Receiving site
+             */
+            site_b_id: number;
+            /**
+             * Format: int64
+             * @description Share of the month, 1 to 99, for which snr_percentile_db is exceeded
+             */
+            snr_percentile: number;
+            /**
+             * Format: int64
+             * @description 12-month smoothed sunspot number R12, 1 to 311
+             */
+            ssn: number;
+            /**
+             * Format: int64
+             * @description Antenna at A: its gain and its horizontal and vertical pattern (elevation above the horizon) are used; isotropic without
+             */
+            tx_antenna_id?: number;
+            /**
+             * Format: double
+             * @description Main lobe azimuth at A; without it the antenna aims at B
+             */
+            tx_azimuth_deg?: number;
+            /**
+             * Format: double
+             * @description Gain of an isotropic antenna at A; ignored with tx_antenna_id
+             */
+            tx_gain_dbi?: number;
+            /**
+             * Format: double
+             * @description Transmitter power in dB(1 kW), -30 to 60
+             */
+            tx_power_dbw: number;
+            /**
+             * Format: int64
+             * @description Year, 1900 to 2100
+             */
+            year: number;
+        };
+        HFSunspot: {
+            /** @description where the value comes from */
+            reference: string;
+            /**
+             * @description observed: smoothed from measurements; predicted: forecast of NOAA SWPC
+             * @enum {string}
+             */
+            source: "observed" | "predicted";
+            /**
+             * Format: int64
+             * @description 12-month smoothed sunspot number (R12), 1 to 311
+             */
+            ssn: number;
+        };
         LegendBin: {
             /** @description Colour as #rrggbb */
             color: string;
@@ -1508,7 +1895,7 @@ export interface components {
             /** @description The password in use, so a stolen session cannot create a lasting token */
             password: string;
             /** @description A write scope includes the read scope of the same resource */
-            scopes: ("sites:read" | "sites:write" | "antennas:read" | "antennas:write" | "links:read" | "links:write" | "coverages:read" | "coverages:write" | "account:read")[];
+            scopes: ("sites:read" | "sites:write" | "antennas:read" | "antennas:write" | "links:read" | "links:write" | "coverages:read" | "coverages:write" | "hf:read" | "account:read")[];
         };
         Overlay: {
             bounds: components["schemas"]["Bounds"];
@@ -2500,6 +2887,232 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "predict-hf-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HFMapInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HFMap"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "predict-hf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HFPredictionInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HFPrediction"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "hf-sunspot": {
+        parameters: {
+            query?: {
+                /** @description Year */
+                year?: number;
+                /** @description Month, 1 to 12 */
+                month?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HFSunspot"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

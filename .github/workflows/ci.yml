@@ -38,7 +38,37 @@ jobs:
       - run: go vet ./...
       - run: go tool staticcheck ./...
       - run: go run ./cmd/radiopath openapi | cmp - web/openapi.json || { echo "web/openapi.json is stale, run 'make api' and commit"; exit 1; }
+      # ITU data set for the HF model tests (pinned and checksummed); without it they would skip, so require it.
+      - uses: actions/cache@v6
+        with:
+          path: tmp/testfiles/hf1
+          key: hf-data-${{ hashFiles('scripts/fetch-hf-data.sh', 'internal/hf/data.sha256') }}
+      - run: scripts/fetch-hf-data.sh
       - run: go test -race ./...
+        env:
+          HF_REQUIRE_DATA: "1"
+
+  # The committed HF reference reports must still be what the unmodified ITU C program writes: build it from the pinned
+  # upstream sources and compare. A separate job, so a toolchain problem never blocks the Go tests.
+  hf-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: ITU-R-Study-Group-3/ITU-R-HF
+          ref: 82017594a1c6cacfaa7e86954c4ae7b3a5825a3d
+          path: tmp/itu
+          sparse-checkout: |
+            P533/Src
+            P372/Src
+            ITURHFProp/Src
+      - uses: actions/cache@v6
+        with:
+          path: tmp/testfiles/hf1
+          key: hf-data-${{ hashFiles('scripts/fetch-hf-data.sh', 'internal/hf/data.sha256') }}
+      - run: scripts/fetch-hf-data.sh
+      - run: internal/hf/testdata/check-reference.sh tmp/itu tmp/testfiles/hf1
 
   # Known vulnerabilities in code paths we call; not a need of docker-image, so a new report does not block releases.
   govulncheck:

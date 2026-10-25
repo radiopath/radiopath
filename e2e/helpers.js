@@ -7,7 +7,7 @@ export const adminToken = 'e2e-only-admin-token-not-a-secret-1234'
 export const password = 'e2e-password-1'
 
 // one user per spec file, so the files run in parallel without seeing each other's data; created by global-setup.js
-export const users = ['account', 'admin', 'antennas', 'auth', 'coverage', 'links', 'mobile', 'owner-a', 'owner-b', 'reference', 'share', 'sites', 'tokens']
+export const users = ['account', 'admin', 'antennas', 'auth', 'coverage', 'hfpage', 'links', 'mobile', 'owner-a', 'owner-b', 'reference', 'share', 'sites', 'tokens']
 
 // map tiles are stubbed in the browser, nothing reaches the tile server; confirm() dialogs of the admin panel are accepted;
 // anything the Content-Security-Policy blocks fails the test

@@ -7,18 +7,20 @@ import (
 	"testing"
 )
 
-// TestDatasets checks where loadConfig looks for terrain and canopy tiles.
+// TestDatasets checks where loadConfig looks for terrain, canopy and HF data.
 func TestDatasets(t *testing.T) {
 	root := t.TempDir()
-	if err := os.Mkdir(filepath.Join(root, "canopy1"), 0o755); err != nil {
-		t.Fatal(err)
+	for _, d := range []string{"canopy1", "hf1"} {
+		if err := os.Mkdir(filepath.Join(root, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
 	}
 	base := func(t *testing.T) {
 		t.Setenv("DATABASE_URL", "postgres://x")
 		t.Setenv("RADIOPATH_REGISTRATION", "false")
-		// unset, not empty: an empty RADIOPATH_DATASET_CANOPY means no canopy
+		// unset, not empty: an empty RADIOPATH_DATASET_CANOPY or RADIOPATH_DATASET_HF means none
 		for _, k := range []string{"RADIOPATH_DATASET_DIR", "RADIOPATH_DATASET_S3_ENDPOINT", "RADIOPATH_DATASET_S3_BUCKET",
-			"RADIOPATH_DATASET_DEM", "RADIOPATH_DATASET_CANOPY"} {
+			"RADIOPATH_DATASET_DEM", "RADIOPATH_DATASET_CANOPY", "RADIOPATH_DATASET_HF", "RADIOPATH_HF_DIR"} {
 			t.Setenv(k, "")
 			os.Unsetenv(k)
 		}
@@ -33,6 +35,28 @@ func TestDatasets(t *testing.T) {
 		}
 		if c.demDir != filepath.Join(root, "srtm1") || c.canopyDir != filepath.Join(root, "canopy1") {
 			t.Errorf("dem %q, canopy %q", c.demDir, c.canopyDir)
+		}
+		if c.hfDir != filepath.Join(root, "hf1") || c.hfPrefix != "" {
+			t.Errorf("hf %q, %q", c.hfDir, c.hfPrefix)
+		}
+	})
+
+	t.Run("hf off or elsewhere", func(t *testing.T) {
+		base(t)
+		t.Setenv("RADIOPATH_DATASET_DIR", root)
+		t.Setenv("RADIOPATH_DATASET_HF", "")
+		if c, err := loadConfig(); err != nil || c.hfDir != "" {
+			t.Errorf("hf %q, %v", c.hfDir, err)
+		}
+		t.Setenv("RADIOPATH_DATASET_HF", "hf2") // missing folder
+		if c, err := loadConfig(); err != nil || c.hfDir != "" {
+			t.Errorf("hf %q, %v", c.hfDir, err)
+		}
+		if err := os.Mkdir(filepath.Join(root, "hf2"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if c, err := loadConfig(); err != nil || c.hfDir != filepath.Join(root, "hf2") {
+			t.Errorf("hf %q, %v", c.hfDir, err)
 		}
 	})
 
@@ -61,11 +85,19 @@ func TestDatasets(t *testing.T) {
 		if c.s3Prefix != "glo30/" || c.canopyPrefix != "canopy1/" || c.demDir != "" {
 			t.Errorf("dem %q, canopy %q, dir %q", c.s3Prefix, c.canopyPrefix, c.demDir)
 		}
+		if c.hfPrefix != "hf1/" || c.hfDir != "" {
+			t.Errorf("hf %q, dir %q", c.hfPrefix, c.hfDir)
+		}
+		t.Setenv("RADIOPATH_DATASET_HF", "")
+		if c, err := loadConfig(); err != nil || c.hfPrefix != "" {
+			t.Errorf("hf %q, %v", c.hfPrefix, err)
+		}
 	})
 
 	for name, env := range map[string]map[string]string{
 		"no root":     {},
 		"old name":    {"RADIOPATH_DATASET_DIR": root, "RADIOPATH_DEM_DIR": root},
+		"old hf name": {"RADIOPATH_DATASET_DIR": root, "RADIOPATH_HF_DIR": root},
 		"no endpoint": {"RADIOPATH_DATASET_S3_BUCKET": "datasets"},
 	} {
 		t.Run(name, func(t *testing.T) {

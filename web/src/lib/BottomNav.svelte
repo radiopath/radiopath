@@ -4,7 +4,7 @@
 </script>
 
 <!-- Phones only: the sections within reach of the thumb. -->
-<nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t bg-card pb-[env(safe-area-inset-bottom)] sm:hidden" aria-label="Sections">
+<nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] sm:hidden" aria-label="Sections">
 	{#each sections as s (s.href)}
 		{@const active = page.url.pathname.startsWith(s.href)}
 		<a

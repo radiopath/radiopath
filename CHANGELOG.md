@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An interactive API reference in the app (Account → API reference), with the scope of every operation, code examples and test requests; bundled, nothing is loaded from outside (by @HB9HIL)
 - JSON API under `/api`, described by OpenAPI at `/api/openapi.json` for logged-in users; the web app is built on it, other programs can use it too (by @HB9HIL)
 - The app and the admin panel send a Content-Security-Policy: scripts only from the app itself and its own inline scripts by hash, no plugins, no framing, no connections elsewhere (by @HB9HIL)
+- HF propagation library `internal/hf`: Go port of ITU-R P.533-14 (MUF, field strength, SNR, circuit reliability) and P.372 radio noise, validated against the ITU reference implementation; reads the ITU data set from the dataset `RADIOPATH_DATASET_HF` (default `hf1`): a folder of the dataset root, or with S3 downloaded and checked by SHA-256 at startup (fetch it with `scripts/fetch-hf-data.sh`), and is served by `POST /api/hf/predictions`, with isotropic antennas or the user's antenna patterns; a data set that cannot be used only turns the HF model off, the rest of the app runs (by @iu2frl)
+- HF prediction page in the app (HF in the header and the tab bar): choose two sites (or take them, the antennas and the aiming from a link), the month, hours, frequencies, antennas with their azimuth, the TX power in dBm, a mode (AM, FM, SSB, PSK31, RTTY, FT8, FT4 or custom bandwidth, required SNR and digital parameters) and the noise environment, the short or the long path, and read MUF, field strength, SNR and reliability per hour and frequency, with charts of the MUF and the reliability over the day, and a world map of the reliability from site A with a slider for the hour (`POST /api/hf/maps`, one map at a time per server, the others wait their turn); nothing is stored (by @iu2frl)
+- `/readyz` also checks that the HF data files are still present when the HF data set is loaded (by @iu2frl)
+- API tokens can be given the `hf:read` scope for the HF predictions, maps and sunspot numbers (by @iu2frl)
+- The HF page takes one month with its hours, or several months with the hours from, to and a step; a range is one prediction per month, with a month selector for the charts and the map and the month in the table. The model has no day resolution, so no day is asked for (by @iu2frl)
+- Info buttons in the corner of the HF page cards (MUF, circuit reliability, map, table) explain what the figures mean (by @iu2frl)
+- The sunspot number of the HF page is filled in from NOAA SWPC: the server loads the smoothed observed and predicted values every 12 hours (`GET /api/hf/sunspots`, `RADIOPATH_SUNSPOT_URL`, empty turns it off) and the page offers the value of the chosen month until you type your own (by @iu2frl)
 
 ### Changed
 - **Breaking:** terrain and canopy tiles live under one dataset root, a directory (`RADIOPATH_DATASET_DIR`) or an S3 bucket (`RADIOPATH_DATASET_S3_*`), with one folder per dataset: `RADIOPATH_DATASET_DEM` (default `srtm1`) and `RADIOPATH_DATASET_CANOPY` (default `canopy1`, empty for none). `RADIOPATH_DEM_DIR`, `RADIOPATH_DEM_S3_*`, `RADIOPATH_CANOPY_DIR` and `RADIOPATH_CANOPY_S3_PREFIX` are no longer read and stop the server at startup; the images look in `/data/srtm1` instead of `/data/dem`. See the table in docs/reference/configuration.md; for development run `git -C tmp/testfiles pull` (by @HB9HIL)
@@ -56,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Tailwind build of the server-rendered pages (`make css`, `internal/web/ui`, the CI job `lint-css`) (by @HB9HIL)
 
 ### Chore
+- CI downloads the pinned, checksummed ITU data set and runs the HF model against 26 reference cases made with the original ITU C program (by @iu2frl)
+- CI job `hf-reference` rebuilds the ITU C program from its pinned sources and checks that it still writes the committed HF reference reports (by @iu2frl)
 - Prettier formats TypeScript and Svelte (`make format`), checked by `make check` and in CI (by @HB9HIL)
 - The Docker build context holds only the sources (`.dockerignore` as an allowlist), so a local `.env` or terrain data no longer reach it (by @HB9HIL)
 - `CONTRIBUTING.md`: development setup, code layout, conventions, the checks before a pull request and how the changelog is kept (by @HB9HIL)

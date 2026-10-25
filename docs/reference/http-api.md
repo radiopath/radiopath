@@ -25,6 +25,7 @@ in the app ([how-to](../how-to/use-the-api-with-a-token.md)), as `Authorization:
   | `antennas:read`, `antennas:write` | `/api/antennas` |
   | `links:read`, `links:write` | `/api/links`, `links:read` also `/links/{id}/report.pdf` |
   | `coverages:read`, `coverages:write` | `/api/coverages`, `coverages:read` also the rasters, report and events |
+  | `hf:read` | `POST /api/hf/predictions`, `POST /api/hf/maps`, `GET /api/hf/sunspots`; there is no write scope, nothing is stored |
   | `account:read` | `GET /api/me` |
 
   A write scope is stored together with the read scope of the same resource. Account settings
@@ -52,6 +53,51 @@ in the app ([how-to](../how-to/use-the-api-with-a-token.md)), as `Authorization:
 | `GET /healthz`, `GET /readyz` | none | liveness and readiness; `not ready` without details |
 
 Without a session or token these routes answer 401 (403 for a token without the scope); the web app sends the browser to the login.
+
+## HF prediction
+
+`POST /api/hf/predictions` (scope `hf:read`, session) predicts an HF circuit between two of the user's sites with
+ITU-R P.533-14 and P.372 (`internal/hf`) and stores nothing. It counts towards the 60 calculations per minute of a
+user (429 beyond that). The web app offers it on the page `/hf`. It answers 503 until the HF data set is loaded (the
+`hf1/` folder of the dataset root, see `RADIOPATH_DATASET_HF`), and 404 for a site of another user. The body names the sites and the conditions:
+
+```json
+{
+  "site_a_id": 1, "site_b_id": 2,
+  "year": 2026, "month": 4, "hours_utc": [6, 12, 18], "ssn": 60,
+  "frequencies_mhz": [7.1, 14.2],
+  "tx_power_dbw": 0, "bandwidth_hz": 3000, "required_snr_db": 15, "snr_percentile": 90,
+  "noise_environment": "rural"
+}
+```
+
+At most 24 hours and 30 frequencies (1 to 30 MHz). Antennas are isotropic with `tx_gain_dbi` and `rx_gain_dbi`, or
+the user's antennas (`tx_antenna_id`, `rx_antenna_id`, aimed with `tx_azimuth_deg`, `rx_azimuth_deg`, by default at
+the other end): the gain at a direction is the antenna's gain less the attenuation of its horizontal pattern (azimuth
+offset) and vertical pattern (elevation above the horizon), as for the links, so an antenna measured at VHF is only a
+rough model at HF. `modulation` is `analog` or `digital` (with optional `digital` parameters), `long_path` takes the
+long way round the
+globe. The answer has one entry in `points` per hour and frequency: MUFs, field strength, receiver power, noise,
+SNR, circuit reliability and the dominant mode with its delay, elevation and loss. The value -307 means that the
+quantity does not apply to the path. Beyond 7000 km the model reports the field strength of the whole path and no
+single modes, so `dominant_mode` is `NONE` there. `overall_reliability_pct` is only calculated for digital
+modulation up to 9000 km and is 0 otherwise; use `basic_reliability_pct` for analog modulation.
+
+`POST /api/hf/maps` (scope `hf:read`, session) answers the same question for the whole globe: the circuit from one
+site to the centre of every 10 degree cell, for one frequency and the requested hours, with isotropic antennas
+(`tx_gain_dbi`, `rx_gain_dbi`). The body is that of a prediction with `site_id` instead of the two sites, one
+`frequency_mhz` instead of a list and no antennas or `long_path`. The answer has `step_deg`, `rows`, `cols` and a frame
+in `frames` per hour, each with `reliability_pct`: one integer per cell, rows from north to south and cells from west
+to east, the same reliability as in the prediction (overall for digital modulation up to 9000 km, basic otherwise).
+The value -307 marks a cell the model could not calculate. A map is up to 15000 runs of the model, so it counts
+against its own limit of 6 maps per user and minute (429 beyond that); a server computes one map at a time, further ones
+wait for their turn up to 30 seconds and answer 429 after that. Otherwise the errors are those of a prediction.
+
+`GET /api/hf/sunspots?year=&month=` (scope `hf:read`) returns the 12-month smoothed sunspot number (R12) of a month,
+the value for `ssn`: `ssn` (1 to 311), `source` (`observed` for the smoothed measurement, `predicted` for the forecast
+of the months NOAA has not smoothed yet) and `reference`. The server loads the values from NOAA SWPC (see
+`RADIOPATH_SUNSPOT_URL`); it answers 404 for a month without a value and while nothing is loaded. The P.533 model
+saturates at a sunspot number of 160, higher values give the same prediction.
 
 ## Errors
 

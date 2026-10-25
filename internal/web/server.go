@@ -21,9 +21,11 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/radiopath/radiopath/internal/hf"
 	"github.com/radiopath/radiopath/internal/link"
 	"github.com/radiopath/radiopath/internal/mail"
 	"github.com/radiopath/radiopath/internal/store"
+	"github.com/radiopath/radiopath/internal/sunspot"
 	"github.com/radiopath/radiopath/internal/tiles"
 )
 
@@ -40,6 +42,8 @@ type base struct {
 type Server struct {
 	Store        *store.Store
 	Analyzer     link.Analyzer
+	HF           *hf.Data        // nil without the HF data set (RADIOPATH_DATASET_HF); the HF operations answer 503
+	Sunspots     *sunspot.Source // nil without HF data or with RADIOPATH_SUNSPOT_URL empty; the lookup answers 404
 	Tiles        *tiles.Proxy
 	DEMReady     func() error
 	Registration bool
@@ -236,16 +240,21 @@ func (s *Server) computeLimited(next http.HandlerFunc) http.HandlerFunc {
 func (s *Server) readyz(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2e9)
 	defer cancel()
-	for _, c := range []struct {
-		part string
+	type part struct {
+		name string
 		err  func() error
-	}{
+	}
+	parts := []part{
 		{"database", func() error { return s.Store.Ping(ctx) }},
 		{"dem", s.DEMReady},
-		{"tile cache", func() error { return s.Tiles.Ready(ctx) }},
-	} {
+	}
+	if s.HF != nil {
+		parts = append(parts, part{"hf data", s.HF.Ready})
+	}
+	parts = append(parts, part{"tile cache", func() error { return s.Tiles.Ready(ctx) }})
+	for _, c := range parts {
 		if err := c.err(); err != nil {
-			s.Log.Warn("not ready", "part", c.part, "err", err)
+			s.Log.Warn("not ready", "part", c.name, "err", err)
 			http.Error(w, "not ready", http.StatusServiceUnavailable)
 			return
 		}

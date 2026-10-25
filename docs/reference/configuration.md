@@ -15,8 +15,10 @@ the Deployment, secrets via `secretKeyRef`.
 | `RADIOPATH_DATASET_S3_SECRET_KEY` | | Secret key, from a Kubernetes Secret |
 | `RADIOPATH_DATASET_DEM` | `srtm1` | Folder or key prefix (without slash) of the `.hgt` terrain tiles |
 | `RADIOPATH_DATASET_CANOPY` | `canopy1` | Folder or key prefix (without slash) of the `.chm` canopy height tiles. Set it empty, or leave the folder out, for no vegetation model |
+| `RADIOPATH_DATASET_HF` | `hf1` | Folder or key prefix (without slash) of the ITU-R P.533/P.372 data of the HF model (`ionosNN.bin`, `COEFFNNW.txt`, `P1239-3 Decile Factors.txt`), created by `scripts/fetch-hf-data.sh`. Set it empty, or leave the folder out, for no HF model: the HF operations answer 503. With the S3 bucket the files are downloaded into a temporary directory at startup (about 131 MB) and checked against their SHA-256. An incomplete folder, files missing from the bucket, a file that does not match or a failed download turn the HF model off and are logged; the rest of the app runs |
 | `RADIOPATH_DEM_CACHE_TILES` | `8` | Tiles kept in memory; a 1" tile is 26 MB (also the size of the canopy cache, 13 MB per tile) |
 | `RADIOPATH_LISTEN` | `:8080` | Listen address |
+| `RADIOPATH_SUNSPOT_URL` | `https://services.swpc.noaa.gov/json/solar-cycle` | Directory of the NOAA SWPC solar cycle files (`observed-solar-cycle-indices.json`, `predicted-solar-cycle.json`) the server downloads every 12 hours (15 minutes after a failure) to fill in the sunspot number of the HF page. Only used with the HF data set. Empty: no download, `GET /api/hf/sunspots` answers 404 and the page keeps its default |
 | `RADIOPATH_METRICS_LISTEN` | `:9090` | Listen address of the Prometheus endpoint (`/metrics`). A second listener on purpose, so it is never reachable through the ingress. Empty: no metrics |
 | `RADIOPATH_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. Logs are always JSON lines on stderr |
 | `RADIOPATH_WORKERS` | `1` | Coverage workers in this process; `0` for web-only pods, `1` on compute pods |
@@ -46,5 +48,6 @@ one of them is set and names its replacement:
 | `RADIOPATH_DEM_S3_ENDPOINT`, `_BUCKET`, `_REGION`, `_ACCESS_KEY`, `_SECRET_KEY` | `RADIOPATH_DATASET_S3_*` with the same suffix |
 | `RADIOPATH_DEM_S3_PREFIX=srtm1/` | `RADIOPATH_DATASET_DEM=srtm1` |
 | `RADIOPATH_CANOPY_DIR`, `RADIOPATH_CANOPY_S3_PREFIX` | `RADIOPATH_DATASET_CANOPY`, a folder next to the terrain |
+| `RADIOPATH_HF_DIR` | `RADIOPATH_DATASET_HF`, a folder next to the terrain (default `hf1`) |
 
 Migrations are embedded and applied at startup.

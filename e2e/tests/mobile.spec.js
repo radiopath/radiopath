@@ -55,7 +55,7 @@ test('keeps the tab bar above the map', async ({ page }) => {
 })
 
 test('fits the screen without scrolling sideways', async ({ page }) => {
-  for (const path of ['/sites', '/links', '/coverages', '/antennas', '/account', `/links/${linkID}`, `/coverages/${coverageID}`, '/sites/new', '/account/security', '/account/tokens', '/account/api-reference']) {
+  for (const path of ['/sites', '/links', '/coverages', '/antennas', '/hf', '/account', `/links/${linkID}`, `/coverages/${coverageID}`, '/sites/new', '/account/security', '/account/tokens', '/account/api-reference']) {
     await page.goto(path)
     await expect(page.locator('main h1')).toBeVisible()
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)

@@ -29,3 +29,13 @@ SRTM file format.
 
 Fetching a 26 MB tile takes a moment on first use; size `RADIOPATH_DEM_CACHE_TILES`
 so the working area stays in memory. The readiness probe does not check S3.
+
+## The HF data set
+
+The ITU data of the HF model sits in the same bucket under `RADIOPATH_DATASET_HF` (default `hf1`), flat, as
+`hf1/ionos01.bin`, `hf1/COEFF01W.txt`, `hf1/P1239-3 Decile Factors.txt` and so on. Unlike the tiles it is not read
+on demand: at startup the server downloads all 25 files (about 131 MB) into a temporary directory, checks each
+against its SHA-256 in `internal/hf/data.sha256` and removes the directory on exit; keep that much room in `/tmp`.
+To fill the bucket, run `scripts/fetch-hf-data.sh` and copy the folder it creates, for example with
+`mc mirror tmp/testfiles/hf1 myminio/radiopath-datasets/hf1`. A bucket without the files, a file that does not match
+its checksum or a failed download leave the HF model off; the server logs it and runs without HF.

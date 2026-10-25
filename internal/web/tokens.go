@@ -25,7 +25,7 @@ const (
 // tokenScopes are the scopes a token can be given, in the order the web app and the mails list them.
 var tokenScopes = []string{
 	scopeSitesRead, scopeSitesWrite, scopeAntennasRead, scopeAntennasWrite, scopeLinksRead, scopeLinksWrite,
-	scopeCoveragesRead, scopeCoveragesWrite, scopeAccountRead,
+	scopeCoveragesRead, scopeCoveragesWrite, scopeHFRead, scopeAccountRead,
 }
 
 var tokenRe = regexp.MustCompile(`^rp_[A-Za-z0-9_-]{43}$`)
@@ -153,7 +153,7 @@ type CreatedToken struct {
 
 type NewTokenInput struct {
 	Name      string     `json:"name"`
-	Scopes    []string   `json:"scopes" doc:"A write scope includes the read scope of the same resource" enum:"sites:read,sites:write,antennas:read,antennas:write,links:read,links:write,coverages:read,coverages:write,account:read"`
+	Scopes    []string   `json:"scopes" doc:"A write scope includes the read scope of the same resource" enum:"sites:read,sites:write,antennas:read,antennas:write,links:read,links:write,coverages:read,coverages:write,hf:read,account:read"`
 	ExpiresAt *time.Time `json:"expires_at,omitempty" doc:"Omit for a token that never expires"`
 	Password  string     `json:"password" doc:"The password in use, so a stolen session cannot create a lasting token"`
 }

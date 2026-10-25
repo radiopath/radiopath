@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -20,10 +21,12 @@ import (
 
 	"github.com/radiopath/radiopath/internal/coverage"
 	"github.com/radiopath/radiopath/internal/dem"
+	"github.com/radiopath/radiopath/internal/hf"
 	"github.com/radiopath/radiopath/internal/link"
 	"github.com/radiopath/radiopath/internal/mail"
 	"github.com/radiopath/radiopath/internal/s3"
 	"github.com/radiopath/radiopath/internal/store"
+	"github.com/radiopath/radiopath/internal/sunspot"
 	"github.com/radiopath/radiopath/internal/tiles"
 	"github.com/radiopath/radiopath/internal/web"
 	"github.com/radiopath/radiopath/internal/webui"
@@ -49,6 +52,9 @@ type config struct {
 	demCacheTiles int
 	canopyDir     string
 	canopyPrefix  string
+	hfDir         string // the HF data set folder, empty when there is none
+	hfPrefix      string // its key prefix in the S3 bucket, empty for HF off
+	sunspotURL    string // NOAA SWPC solar cycle files for the HF sunspot number; empty turns the download off
 	listen        string
 	metricsListen string
 	logLevel      slog.Level
@@ -75,6 +81,10 @@ func loadConfig() (config, error) {
 	}
 	if v, ok := os.LookupEnv("RADIOPATH_METRICS_LISTEN"); ok {
 		c.metricsListen = v
+	}
+	c.sunspotURL = sunspot.DefaultURL
+	if v, ok := os.LookupEnv("RADIOPATH_SUNSPOT_URL"); ok {
+		c.sunspotURL = v
 	}
 	ttl, err := time.ParseDuration(envOr("RADIOPATH_TILE_TTL", tiles.DefaultTTL.String()))
 	if err != nil || ttl <= 0 {
@@ -155,10 +165,12 @@ var replaced = [][2]string{
 	{"RADIOPATH_DEM_S3_SECRET_KEY", "RADIOPATH_DATASET_S3_SECRET_KEY"},
 	{"RADIOPATH_CANOPY_DIR", "RADIOPATH_DATASET_CANOPY"},
 	{"RADIOPATH_CANOPY_S3_PREFIX", "RADIOPATH_DATASET_CANOPY"},
+	{"RADIOPATH_HF_DIR", "RADIOPATH_DATASET_HF"},
 }
 
-// datasets fills in where the terrain and canopy tiles are: one root, a directory or an S3 bucket, with a folder
-// (key prefix) per dataset. An empty RADIOPATH_DATASET_CANOPY, or a missing canopy folder, means no vegetation.
+// datasets fills in where the terrain, canopy and HF data are: one root, a directory or an S3 bucket, with a folder
+// (key prefix) per dataset. An empty RADIOPATH_DATASET_CANOPY or RADIOPATH_DATASET_HF, or a missing folder, means no
+// vegetation model or no HF model.
 func datasets(c *config) error {
 	for _, r := range replaced {
 		if _, ok := os.LookupEnv(r[0]); ok {
@@ -169,6 +181,10 @@ func datasets(c *config) error {
 	canopyName, ok := os.LookupEnv("RADIOPATH_DATASET_CANOPY")
 	if !ok {
 		canopyName = "canopy1"
+	}
+	hfName, ok := os.LookupEnv("RADIOPATH_DATASET_HF")
+	if !ok {
+		hfName = "hf1"
 	}
 	c.s3 = s3.Client{
 		Endpoint:  os.Getenv("RADIOPATH_DATASET_S3_ENDPOINT"),
@@ -188,12 +204,18 @@ func datasets(c *config) error {
 		if canopyName != "" {
 			c.canopyPrefix = canopyName + "/"
 		}
+		if hfName != "" {
+			c.hfPrefix = hfName + "/"
+		}
 	case root == "":
 		return errors.New("RADIOPATH_DATASET_DIR or RADIOPATH_DATASET_S3_BUCKET is required")
 	default:
 		c.demDir = filepath.Join(root, demName)
 		if fi, err := os.Stat(filepath.Join(root, canopyName)); canopyName != "" && err == nil && fi.IsDir() {
 			c.canopyDir = filepath.Join(root, canopyName)
+		}
+		if fi, err := os.Stat(filepath.Join(root, hfName)); hfName != "" && err == nil && fi.IsDir() {
+			c.hfDir = filepath.Join(root, hfName)
 		}
 	}
 	return nil
@@ -253,6 +275,44 @@ func main() {
 	}
 }
 
+// openHF opens the HF data set: its folder in the dataset directory, or the files under its key prefix in the S3
+// bucket, downloaded and verified into a temporary directory first (about 130 MB). The returned func removes that
+// directory. Without a folder, or with the files missing from the bucket, the HF model stays off and the result is nil;
+// an error also leaves it off, run only logs it so the rest of the app still starts.
+func openHF(ctx context.Context, cfg config, log *slog.Logger) (*hf.Data, func(), error) {
+	dir, cleanup := cfg.hfDir, func() {}
+	if cfg.s3.Bucket != "" && cfg.hfPrefix != "" {
+		tmp, err := os.MkdirTemp("", "radiopath-hf-")
+		if err != nil {
+			return nil, cleanup, err
+		}
+		cleanup = func() { os.RemoveAll(tmp) }
+		err = hf.Fetch(ctx, tmp, func(ctx context.Context, name string) (io.ReadCloser, error) {
+			return cfg.s3.Get(ctx, cfg.hfPrefix+name)
+		})
+		if errors.Is(err, s3.ErrNotFound) {
+			log.Warn("hf data set is not in the bucket, the HF model is off", "err", err)
+			return nil, cleanup, nil
+		}
+		if err != nil {
+			return nil, cleanup, err
+		}
+		dir = tmp
+	}
+	if dir == "" {
+		return nil, cleanup, nil
+	}
+	d, err := hf.Open(dir, "")
+	if err == nil {
+		err = d.Ready()
+	}
+	if err != nil {
+		return nil, cleanup, fmt.Errorf("hf data: %w", err)
+	}
+	log.Info("hf data", "dir", dir, "s3", cfg.hfPrefix != "" && cfg.s3.Bucket != "")
+	return d, cleanup, nil
+}
+
 // run starts the store, workers, janitor, metrics and HTTP server, and shuts them down in order on cancel or listen error.
 func run(ctx context.Context, cfg config, log *slog.Logger) error {
 	log.Info("starting", "version", version, "workers", cfg.workers, "listen", cfg.listen, "metrics", cfg.metricsListen)
@@ -299,8 +359,19 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 		canopy = dem.NewDirCanopy(cfg.canopyDir, cfg.demCacheTiles)
 		log.Info("canopy source", "dir", cfg.canopyDir)
 	}
+	hfData, closeHF, err := openHF(ctx, cfg, log)
+	defer closeHF()
+	if err != nil {
+		log.Error("hf data set unusable, the HF model is off", "err", err)
+	}
+	var sunspots *sunspot.Source
+	if hfData != nil && cfg.sunspotURL != "" {
+		sunspots = sunspot.New(cfg.sunspotURL)
+	}
 	srv := &web.Server{
 		Store:        st,
+		HF:           hfData,
+		Sunspots:     sunspots,
 		Analyzer:     link.Calculator{DEM: src, Canopy: canopy},
 		Tiles:        proxy,
 		DEMReady:     demReady,
@@ -333,6 +404,11 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 
 	workers.Add(1)
 	go func() { defer workers.Done(); janitor(workerCtx, st, log) }()
+
+	if sunspots != nil {
+		workers.Add(1)
+		go func() { defer workers.Done(); sunspots.Run(workerCtx, log) }()
+	}
 
 	for i := 0; i < cfg.workers; i++ {
 		w := &worker.Worker{Name: fmt.Sprintf("%s/%d", host, i), Store: st, Coverage: coverage.Calculator{DEM: src}, Log: log}

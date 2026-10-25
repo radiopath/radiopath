@@ -1,0 +1,22 @@
+This package is a Go port of the ITU-R P.372 radio noise library (P372.dll
+and the ReadFamDud() coefficient reader), part of the ITU-R HF propagation
+software (ITURHFProp / P533 / P372) developed collaboratively by
+participants in ITU-R Study Group 3, Working Party 3L (ITU-R WP3L).
+
+The original software states that it "may be used by implementers in their
+implementation of the Recommendation as well as in revisions of the specific
+original Recommendation and in other ITU Recommendations, free from any copyright
+assertions", and is provided "as is" WITH NO WARRANTIES, EXPRESS OR IMPLIED.
+The ITU shall not be held liable in any event for any damages arising out of
+or related to use of the software.
+
+Modifications:
+  - Translated from C to Go, one Go file per original C source file.
+  - Dynamically allocated arrays replaced by fixed-size Go arrays held in a
+    read-only Coefficients value, so that Compute is safe for concurrent use.
+  - Return codes mapped to Go error values.
+  - Only the arrays used for noise (fakp, fakabp, dud, fam) are read from
+    the COEFFxxW.txt monthly files; the other ionospheric coefficient arrays
+    read by the stand-alone ReadCoeff() utility are not used and not ported.
+  - The data files are not part of this repository; their directory is given
+    at run time.

@@ -1,12 +1,13 @@
 <script lang="ts" module>
 	type Level = 'none' | 'read' | 'write';
 
-	// What a token can be given access to; account has no write scope.
+	// What a token can be given access to; account and hf have no write scope.
 	export const resources = [
 		{ key: 'sites', label: 'Sites', hint: 'Locations and antenna heights', write: true },
 		{ key: 'antennas', label: 'Antennas', hint: 'Patterns and manual antennas', write: true },
 		{ key: 'links', label: 'Links', hint: 'Links, path analyses and PDF reports', write: true },
 		{ key: 'coverages', label: 'Coverages', hint: 'Coverages, jobs, rasters and PDF reports', write: true },
+		{ key: 'hf', label: 'HF prediction', hint: 'HF circuit predictions, maps and sunspot numbers', write: false },
 		{ key: 'account', label: 'Account', hint: 'User name and address', write: false }
 	] as const;
 
@@ -77,7 +78,7 @@
 			secret = t.token;
 			// a GET the new token may call
 			const first = resources.find((r) => levels[r.key] !== 'none')!;
-			sample = first.key === 'account' ? '/api/me' : `/api/${first.key}`;
+			sample = first.key === 'account' ? '/api/me' : first.key === 'hf' ? '/api/hf/sunspots?year=2026&month=1' : `/api/${first.key}`;
 			password = '';
 			await oncreated();
 		} catch (err) {

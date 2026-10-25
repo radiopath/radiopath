@@ -1,0 +1,156 @@
+---------------------------------------------------------------------------
+ International Telecommunications Union - Radiocommunication Sector (ITU-R)
+     ITURHFProp         Ver Oct 25 2026
+     HF Model (P533)    Ver 14.2
+     Noise Model (P372) Ver 14.3
+     Analysis Prepared  Sun Oct 25 11:33:06 2026
+
+---------------------------------------------------------------------------
+
+***************************** P533 Input Parameters ****************************
+
+	case11 Sydney-Los Angeles ~12000km long, equator crossing, Apr SSN120, QUIETRURAL, 10 dBkW
+	Year          : 2020
+	Month         : April
+	Hour          : 6 (hour UTC)
+	SSN (R12)     : 120
+	Distance      : 12076.683882 (km)
+	dmax          : 4000.000000 (km)
+	Tx power      : 10.000000
+	Tx Location     Sydney
+	Tx latitude   :  33.900000 S
+	Tx longitude  : 151.200000 E
+	Rx Location     Los_Angeles
+	Rx latitude   :  34.000000 N
+	Rx longitude  : 118.200000 W
+	local time Rx : 23 (hour UTC)
+	local time Tx : 16 (hour UTC)
+	Frequency     : 7.100000
+	Bandwidth     : 3000.000000
+	Modulation : ANALOG
+	Required signal-to-noise ratio : 15.000000
+	Required % of month signal-to-noise ratio :  90
+	Required signal-to-interference ratio : 10.000000
+	Man-made noise : QUIETRURAL
+	Antenna configuration : Transmitter main beam to receiver main beam
+	Path Direction : SHORTPATH
+	Transmit antenna               ISOTROPIC
+	Transmit antenna bearing     : 61.011787
+	Transmit antenna gain offset : 0.000000
+	Receive antenna                ISOTROPIC
+	Receive antenna bearing      : 241.133607
+	Receive antenna gain offset  : 0.000000
+
+************************ End P533 Input Parameters *****************************
+
+************************** ITURHFP Input Parameters *****************************
+
+	Upper left (North West) latitude   :  34.000000 N
+	Upper left (North West) longitude  : 118.200000 W
+	Lower right (South East) latitude  :  34.000000 N
+	Lower right (South East) longitude : 118.200000 W
+	Number of frequencies : 4
+	Number of hours       : 4
+	Number of months      : 1
+	Latitude increment    : 1.000000 (deg)
+	Longitude increment   : 1.000000 (deg)
+
+************************** ITURHFP Input Parameters *****************************
+
+******************************** Data Format ***********************************
+
+Column 01: Month
+Column 02: Hour
+Column 03: Frequency (MHz)
+Column 04: Receiver latitude (deg)
+Column 05: Receiver longitude (deg)
+Column 06: D - Path distance (km)
+Column 07: dmax - Path maximum hop distance (km)
+Column 08: ptick - Slant Path distance (km)
+Column 09: ele - Path minimum Rx elevation angle (deg)
+Column 10: BMUF - Path basic MUF (MHz)
+Column 11: MUF50 - 50% Path basic MUF (MHz)
+Column 12: MUF90 - 90% Path basic MUF (MHz)
+Column 13: MUF10 - 10% Path basic MUF (MHz)
+Column 14: OPMUF - Operation MUF (MHz)
+Column 15: OPMUF90 - 90% Operation MUF (MHz)
+Column 16: OPMUF10 - 10% Operation MUF (MHz)
+Column 17: Lowest order mode for the F2 layer
+Column 18: Lowest order mode for the E layer
+Column 19: E - Path Field Strength (dB(1uV/m))
+Column 20: Pr - Median receiver power (dB)
+Column 21: Grw - Receive Antenna Gain (dbi)
+Column 22: FaA - Atmospheric noise (dB)
+Column 23: FaM - Man-made noise (dB)
+Column 24: FaG - Galactic noise (dB)
+Column 25: DuA - Upper decile deviation of atmospheric noise (dB)
+Column 26: DlA - Lower decile deviation of atmospheric noise (dB)
+Column 27: DuM - Upper decile deviation of man-made noise (dB)
+Column 28: DlM - Lower decile deviation of man-made noise (dB)
+Column 29: DuG - Upper decile deviation of atmospheric noise (dB)
+Column 30: DlG - Lower decile deviation of atmospheric noise (dB)
+Column 31: DuT - Upper decile deviation of total noise (dB)
+Column 32: DlT - Lower decile deviation of total noise (dB)
+Column 33: FamT - Total noise (dB)
+Column 34: SNR - Median signal-to-noise ratio (dB)
+Column 35: DuSN - Upper decile deviation of signal-to-noise ratio (dB)
+Column 36: DlSN - Lower decile deviation of signal-to-noise ratio (dB)
+Column 37: SNRXXp - Signal-to-noise ratio at 90% of month
+Column 38: SIR - Signal-to-interference ratio (dB)
+Column 39: DuSI - Upper decile deviation of signal-to-interference ratio (dB)
+Column 40: DlSI - Lower decile deviation of signal-to-interference ratio (dB)
+Column 41: RSN - Probability that the required SNR is achieved (%)
+Column 42: RT - Probability that the required time spread T0 is not exceeded (%)
+Column 43: RF - Probability that the required frequency spread f0 is not exceeded (%)
+Column 44: BCR - Basic circuit reliability (%)
+Column 45: OCR - Overall circuit reliability not considering scattering (%)
+Column 46: OCRs - Overall circuit reliability considering scattering (%)
+Column 47: Probocc - Probability of scattering (%)
+Column 48: MIR - Multimode Interference (%)
+Column 49: Dominant mode
+Column 50: Dominant mode - Elevation angle (deg)
+Column 51: Dominant mode - Delay (mS)
+Column 52: Dominant mode - Loss (dB)
+Column 53: Dominant mode - Propagation probability (%)
+Column 54: Dominant mode - Virtual height (km)
+Column 55: Dominant mode - Median received power (dB)
+Column 56: Dominant mode - Receiver Antenna Gain (dBi)
+Column 57: Dominant mode - Field Strength (dB(1uV/m))
+Column 58: Dominant mode - Basic MUF (MHz)
+Column 59: Short Path (<=7000 km) Field Strength (dB(1uV/m))
+Column 60: Long Path (>9000km) Field Strength (dB(1uV/m))
+Column 61: Free-space Field Strength 3 MW e.i.r.p. (dB(1uV/m)
+Column 62: Increased Long Distance Field Strength due to Focusing (dB)
+Column 63: "Not otherwise included loss" (dB)
+Column 64: Upper Reference Frequency (MHz)
+Column 65: Lower Reference Frequency (MHz)
+Column 66: Correction Factor at T + d0/2
+Column 67: Correction Factor at R - d0/2
+Column 68: Max Antenna Gain G_tl (0 - 8 deg)
+Column 69: Max Antenna Gain G_rw (0 - 8 deg)
+Column 70: Mean gyrofrequency
+Column 71: Scale factor f(f ,fL, fM, fH)
+
+************************** End Data Format ********************************
+
+************************ Calculated Parameters ****************************
+
+04, 06,    7.100,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  25.16,  25.16,  20.30,  30.84,  37.89,  30.57,  46.45, NONE , NONE ,   4.09,-120.13,   0.00,  49.09,  29.25,  32.42,   6.32,   6.13,   9.20,   4.60,   2.00,   2.00,   6.20,   6.06,  49.24,  -0.13,   9.83,  12.95, -13.07,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,   1.51,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,   4.0930,  57.6200,   3.0106,  -0.1700,  37.8892,   5.2916,   1.4410,   1.5061,   0.0000,   0.0000,   1.1524,   0.3629
+04, 06,   14.200,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  25.16,  25.16,  20.30,  30.84,  37.89,  30.57,  46.45, NONE , NONE ,  22.24,-108.00,   0.00,  30.10,  20.64,  25.50,   5.36,   4.51,   9.20,   4.60,   2.00,   2.00,   4.89,   3.54,  32.05,  29.49,   8.68,  12.49,  17.00,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,  92.97,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,  22.2448,  57.6200,   3.0106,  -0.1700,  37.8892,   5.2916,   1.4410,   1.5061,   0.0000,   0.0000,   1.1524,   0.6780
+04, 06,   21.200,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  25.16,  25.16,  20.30,  30.84,  37.89,  30.57,  46.45, NONE , NONE ,  17.75,-115.97,   0.00,  12.35,  15.67,  21.49,   5.19,   3.63,   9.20,   4.60,   2.00,   2.00,   6.52,   1.87,  22.10,  30.35,   9.76,  15.19,  15.16,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,  90.21,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,  17.7525,  57.6200,   3.0106,  -0.1700,  37.8892,   5.2916,   1.4410,   1.5061,   0.0000,   0.0000,   1.1524,   0.6000
+04, 06,   28.500,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  25.16,  25.16,  20.30,  30.84,  37.89,  30.57,  46.45, NONE , NONE ,   5.79,-130.50,   0.00,  -5.11,  11.99,  18.54,   5.19,   3.63,   9.20,   4.60,   2.00,   2.00,   6.50,   1.96,  18.46,  19.30,  13.21,  15.91,   3.39,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,  67.03,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,   5.7948,  57.6200,   3.0106,  -0.1700,  37.8892,   5.2916,   1.4410,   1.5061,   0.0000,   0.0000,   1.1524,   0.3925
+04, 12,    7.100,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  18.15,  18.15,  16.15,  19.97,  28.49,  25.34,  31.33, NONE , NONE ,  28.04, -96.19,   0.00,  44.13,  29.25,  32.42,   9.76,   9.63,   9.20,   4.60,   2.00,   2.00,   9.63,   9.55,  44.35,  28.49,  11.40,  14.78,  13.71,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,  88.18,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,  28.0363,  57.6200,   3.0106,  -0.1700,  28.4859,   2.0064,   1.5148,   1.5693,   0.0000,   0.0000,   1.1524,   0.7785
+04, 12,   14.200,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  18.15,  18.15,  16.15,  19.97,  28.49,  25.34,  31.33, NONE , NONE ,  23.10,-107.14,   0.00,  29.30,  20.64,  25.50,   6.55,   5.89,   9.20,   4.60,   2.00,   2.00,   5.66,   4.83,  31.44,  30.88,   8.95,  12.85,  18.03,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,  94.21,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,  23.1020,  57.6200,   3.0106,  -0.1700,  28.4859,   2.0064,   1.5148,   1.5693,   0.0000,   0.0000,   1.1524,   0.6928
+04, 12,   21.200,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  18.15,  18.15,  16.15,  19.97,  28.49,  25.34,  31.33, NONE , NONE ,   7.26,-126.47,   0.00,   8.78,  15.67,  21.49,   4.88,   3.28,   9.20,   4.60,   2.00,   2.00,   6.69,   1.94,  21.73,  20.08,  13.23,  15.99,   4.09,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,  69.28,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,   7.2580,  57.6200,   3.0106,  -0.1700,  28.4859,   2.0064,   1.5148,   1.5693,   0.0000,   0.0000,   1.1524,   0.4179
+04, 12,   28.500,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  18.15,  18.15,  16.15,  19.97,  28.49,  25.34,  31.33, NONE , NONE , -16.87,-153.17,   0.00, -13.07,  11.99,  18.54,   4.88,   3.28,   9.20,   4.60,   2.00,   2.00,   6.51,   1.96,  18.44,  -3.35,  13.21,  12.17, -15.52,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,   3.49,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000, -16.8730,  57.6200,   3.0106,  -0.1700,  28.4859,   2.0064,   1.5148,   1.5693,   0.0000,   0.0000,   1.1524,  -0.0009
+04, 18,    7.100,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  15.54,  15.54,  13.63,  17.36,  24.75,  21.70,  27.64, NONE , NONE , -85.02,-209.25,   0.00,  29.51,  29.25,  32.42,  10.49,   7.40,   9.20,   4.60,   2.00,   2.00,   8.63,   4.47,  34.96, -75.44,   8.56,  13.60, -89.03,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000, -85.0237,  57.6200,   3.0106,  -0.1700,  24.7500,  12.3451,   1.5924,   1.4712,   0.0000,   0.0000,   1.1524,  -1.1837
+04, 18,   14.200,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  15.54,  15.54,  13.63,  17.36,  24.75,  21.70,  27.64, NONE , NONE , -10.15,-140.39,   0.00,  32.11,  20.64,  25.50,   8.29,   5.96,   9.20,   4.60,   2.00,   2.00,   7.79,   5.35,  33.34,  -4.38,  10.64,  16.37, -20.75,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000, -10.1452,  57.6200,   3.0106,  -0.1700,  24.7500,  12.3451,   1.5924,   1.4712,   0.0000,   0.0000,   1.1524,   0.1158
+04, 18,   21.200,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  15.54,  15.54,  13.63,  17.36,  24.75,  21.70,  27.64, NONE , NONE ,  -9.47,-143.20,   0.00,  16.99,  15.67,  21.49,   7.22,   5.15,   9.20,   4.60,   2.00,   2.00,   5.95,   2.24,  23.65,   2.46,  14.23,  13.91, -11.45,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,  12.51,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,  -9.4683,  57.6200,   3.0106,  -0.1700,  24.7500,  12.3451,   1.5924,   1.4712,   0.0000,   0.0000,   1.1524,   0.1276
+04, 18,   28.500,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  15.54,  15.54,  13.63,  17.36,  24.75,  21.70,  27.64, NONE , NONE , -27.97,-164.27,   0.00,  -9.78,  11.99,  18.54,   7.22,   5.15,   9.20,   4.60,   2.00,   2.00,   6.50,   1.96,  18.45, -14.46,  10.57,  12.17, -26.63,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000, -27.9749,  57.6200,   3.0106,  -0.1700,  24.7500,  12.3451,   1.5924,   1.4712,   0.0000,   0.0000,   1.1524,  -0.1936
+04, 24,    7.100,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  37.06,  37.06,  30.01,  47.05,  54.04,  43.77,  68.61, NONE , NONE ,-235.28,-359.51,   0.00,  45.53,  29.25,  32.42,  11.63,  10.23,   9.20,   4.60,   2.00,   2.00,  11.59,  10.19,  45.67,-236.12,  11.95,  16.07,-252.19,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,-235.2847,  57.6200,   3.0106,  -0.1700,  54.0406,  17.9199,   1.4320,   1.4584,   0.0000,   0.0000,   1.1524,  -3.7915
+04, 24,   14.200,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  37.06,  37.06,  30.01,  47.05,  54.04,  43.77,  68.61, NONE , NONE , -42.62,-172.87,   0.00,  37.77,  20.64,  25.50,   8.01,   6.67,   9.20,   4.60,   2.00,   2.00,   7.85,   6.51,  38.10, -41.74,   9.96,  13.77, -55.51,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000, -42.6217,  57.6200,   3.0106,  -0.1700,  54.0406,  17.9199,   1.4320,   1.4584,   0.0000,   0.0000,   1.1524,  -0.4478
+04, 24,   21.200,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  37.06,  37.06,  30.01,  47.05,  54.04,  43.77,  68.61, NONE , NONE ,  -5.12,-138.84,   0.00,  21.58,  15.67,  21.49,   6.10,   4.36,   9.20,   4.60,   2.00,   2.00,   5.32,   2.59,  25.48,   5.31,   8.44,  12.54,  -7.23,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,   7.23,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,  -5.1168,  57.6200,   3.0106,  -0.1700,  54.0406,  17.9199,   1.4320,   1.4584,   0.0000,   0.0000,   1.1524,   0.2031
+04, 24,   28.500,  34.0000,-118.2000, 12076.68, 4000.00, 12560.29,   0.00,  37.06,  37.06,  30.01,  47.05,  54.04,  43.77,  68.61, NONE , NONE ,   4.65,-131.65,   0.00,  -0.88,  11.99,  18.54,   6.10,   4.36,   9.20,   4.60,   2.00,   2.00,   6.47,   1.94,  18.51,  18.13,   8.17,  12.18,   5.96,-307.00,-307.00,-307.00,   0.00,   0.00,   0.00,  66.37,   0.00,   0.00,   0.00,-307.00, NONE ,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,   0.00,-307.0000,   4.6488,  57.6200,   3.0106,  -0.1700,  54.0406,  17.9199,   1.4320,   1.4584,   0.0000,   0.0000,   1.1524,   0.3726
+
+**************************End Calculated Parameters ***********************
+
