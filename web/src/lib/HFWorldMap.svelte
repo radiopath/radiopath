@@ -81,8 +81,8 @@
 </script>
 
 <svg viewBox="0 0 360 180" class="h-auto w-full rounded border" role="img" aria-label="World map">
-	<rect width="360" height="180" fill="var(--cp-line-soft)" />
-	<path d={land.path} fill="var(--cp-surface)" stroke="var(--cp-line)" stroke-width="0.3" />
+	<rect width="360" height="180" fill="color-mix(in srgb, var(--cp-fresnel) 30%, var(--cp-surface))" />
+	<path d={land.path} fill="color-mix(in srgb, var(--cp-terrain) 70%, var(--cp-surface))" stroke="var(--cp-terrain-edge)" stroke-width="0.3" />
 	{#each [-60, -30, 0, 30, 60] as lat (lat)}
 		<line x1="0" x2="360" y1={py(lat)} y2={py(lat)} stroke="var(--cp-line)" stroke-width="0.2" />
 	{/each}
