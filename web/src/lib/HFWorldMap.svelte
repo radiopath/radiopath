@@ -81,7 +81,7 @@
 </script>
 
 <svg viewBox="0 0 360 180" class="h-auto w-full rounded border" role="img" aria-label="World map">
-	<rect width="360" height="180" fill="color-mix(in srgb, var(--cp-fresnel) 50%, var(--cp-surface))" />
+	<rect width="360" height="180" fill="color-mix(in srgb, var(--cp-fresnel) 40%, var(--cp-surface))" />
 	<path d={land.path} fill="var(--cp-terrain)" stroke="var(--cp-terrain-edge)" stroke-width="0.3" />
 	{#each [-60, -30, 0, 30, 60] as lat (lat)}
 		<line x1="0" x2="360" y1={py(lat)} y2={py(lat)} stroke="var(--cp-line)" stroke-width="0.2" />
@@ -93,7 +93,7 @@
 		{#if v >= 0}
 			{@const r = Math.floor(i / map.cols)}
 			{@const c = i % map.cols}
-			<rect x={c * step} y={r * step} width={step} height={step} fill={heat(v)} fill-opacity="0.5">
+			<rect x={c * step} y={r * step} width={step} height={step} fill={heat(v)} fill-opacity="0.4">
 				<title>{90 - step * (r + 0.5)}°, {-180 + step * (c + 0.5)}°: {v} %</title>
 			</rect>
 		{/if}
