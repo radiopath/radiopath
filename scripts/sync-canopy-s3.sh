@@ -185,7 +185,7 @@ fi
 echo "syncing ${#sources[@]} source tiles with $JOBS workers, log: $LOG_FILE"
 start=$(date +%s)
 printf '%s\n' "${sources[@]}" | CANOPY_SYNC_WORKER=1 CANOPY_SYNC_WORKDIR=$WORKDIR CANOPY_SYNC_GDAL="$GDAL" \
-	xargs -P "$JOBS" -I{} "$0" -e "$ENV_FILE" {}
+	xargs -P "$JOBS" -I{} "$0" -e "$ENV_FILE" -- {}
 
 echo "done in $(( $(date +%s) - start )) s"
 for a in uploaded skipped-exists no-trees no-source failed; do

@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The cookies that logout and admin logout clear are marked `Secure` (behind HTTPS) and `SameSite` like the ones they replace (by @HB9HIL)
 - A tab opened before a deploy loads the new version instead of failing on script chunks the new build no longer has (by @HB9HIL)
 - Legend colours are parsed byte by byte, so a colour can never be truncated on its way into a raster or report (by @HB9HIL)
+- `scripts/sync-canopy-s3.sh` works south of the equator; a negative latitude was taken for an option (by @HB9HIL)
 
 ### Removed
 - The API docs page `/api/docs`, which loaded its scripts from a CDN; `/api/openapi.json` and `/api/schemas/` need a login (by @HB9HIL)
