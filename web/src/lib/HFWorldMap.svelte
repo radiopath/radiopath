@@ -93,7 +93,7 @@
 		{#if v >= 0}
 			{@const r = Math.floor(i / map.cols)}
 			{@const c = i % map.cols}
-			<rect x={c * step} y={r * step} width={step} height={step} fill={heat(v)} fill-opacity="0.6">
+			<rect x={c * step} y={r * step} width={step} height={step} fill={heat(v)} fill-opacity="0.5">
 				<title>{90 - step * (r + 0.5)}°, {-180 + step * (c + 0.5)}°: {v} %</title>
 			</rect>
 		{/if}
