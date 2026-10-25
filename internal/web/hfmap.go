@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"runtime"
 	"sync"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
@@ -21,12 +20,6 @@ const (
 	// hfMapUserMax is the number of maps per user and minute: one is up to 15000 runs, a path at most 720.
 	hfMapUserMax = 6
 )
-
-// hfMapSlots bounds the maps this process computes at once: one uses every CPU for a few seconds, more would starve
-// link analysis and the probes. Further requests queue for up to hfMapWait.
-var hfMapSlots = make(chan struct{}, 1)
-
-const hfMapWait = 30 * time.Second
 
 // errClientGone answers a request whose client hung up: 499 as in nginx, so it is neither a server error in the
 // metrics nor in the log; nobody reads the body.
@@ -95,7 +88,8 @@ func hfReliability(p hf.Point, digital bool) float64 {
 }
 
 // hfMapCompute runs the model for the circuit req from its transmitter to the centre of every cell of the globe on all
-// CPUs; cells the model cannot calculate stay at hfNotAvailable, and it fails only when none could be calculated.
+// CPUs; cells the model cannot calculate stay at hfNotAvailable, and it fails only when none could be calculated. It
+// runs in a worker; the short-job pool bounds how many maps a process computes at once.
 func hfMapCompute(ctx context.Context, data *hf.Data, req hf.Request) (HFMap, error) {
 	rows, cols := int(180/hfMapStep), int(360/hfMapStep)
 	digital := req.Modulation == hf.Digital
@@ -175,19 +169,6 @@ func (s *Server) registerHFMap(api huma.API) {
 		"HF reliability map from a site to every cell of the globe (ITU-R P.533), nothing is stored")
 	o.Errors = append(o.Errors, http.StatusUnprocessableEntity, http.StatusTooManyRequests, http.StatusServiceUnavailable)
 	huma.Register(api, o, func(ctx context.Context, in *struct{ Body HFMapInput }) (*HFMapOutput, error) {
-		if s.HF == nil {
-			return nil, huma.Error503ServiceUnavailable("The HF model is not configured on this server")
-		}
-		wait := time.NewTimer(hfMapWait)
-		defer wait.Stop()
-		select {
-		case hfMapSlots <- struct{}{}:
-			defer func() { <-hfMapSlots }()
-		case <-wait.C:
-			return nil, huma.Error429TooManyRequests("The server is busy with other maps, try again in a minute.")
-		case <-ctx.Done():
-			return nil, errClientGone
-		}
 		owner := userOf(ctx).ID
 		if err := s.hfMapHit(ctx, owner); err != nil {
 			return nil, err
@@ -200,13 +181,9 @@ func (s *Server) registerHFMap(api huma.API) {
 		if err != nil {
 			return nil, err
 		}
-		m, err := hfMapCompute(ctx, s.HF, req)
-		if ctx.Err() != nil {
-			return nil, errClientGone
-		}
-		if err != nil {
-			s.Log.Error("hf map failed", "err", err)
-			return nil, huma.Error500InternalServerError("Internal error")
+		var m HFMap
+		if err := s.hfRun(ctx, owner, kindHFMap, hfJob{Request: req}, &m); err != nil {
+			return nil, err
 		}
 		return &HFMapOutput{m}, nil
 	})

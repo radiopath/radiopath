@@ -92,3 +92,13 @@ func TestRunJob(t *testing.T) {
 		t.Fatalf("failing job = %+v %v", j, err)
 	}
 }
+
+// Without the HF data set a worker fails HF jobs with the text the API answers 503 with.
+func TestRunJobHFOff(t *testing.T) {
+	s := &Server{}
+	_, err := s.RunJob(context.Background(), store.Job{Kind: kindHFMap, Input: []byte(`{}`)})
+	var pe interface{ Public() string }
+	if !errors.As(err, &pe) || pe.Public() != errHFOff.Public() {
+		t.Fatalf("err = %v, want the public HF-off text", err)
+	}
+}

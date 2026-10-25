@@ -137,9 +137,12 @@ func TestHFPredictionJSON(t *testing.T) {
 	}
 }
 
-// TestHFPattern gives the antenna's gain at the main lobe and its attenuation off it.
+// TestHFPattern gives the antenna's gain at the main lobe and its attenuation off it; an isotropic antenna has no function.
 func TestHFPattern(t *testing.T) {
-	g := hfPattern(store.Antenna{GainDBi: 9, PatternH: antenna.Sector(60, 20)})
+	if (*hfAntenna)(nil).pattern() != nil {
+		t.Error("isotropic antenna has a pattern function")
+	}
+	g := (&hfAntenna{GainDBi: 9, H: antenna.Sector(60, 20)}).pattern()
 	if got := g(0, 0); got != 9 {
 		t.Errorf("gain on boresight %v, want 9", got)
 	}

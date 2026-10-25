@@ -19,8 +19,8 @@ replica can serve any request.
 ## Jobs
 
 Everything that needs the terrain or HF data runs as a job in the table `jobs`, claimed by workers with `FOR UPDATE
-SKIP LOCKED`: coverages by the coverage workers (`RADIOPATH_WORKERS`, minutes each), link analyses by a pool of
-short-job workers (one per CPU, seconds each), so a long coverage never delays a link. A job carries a snapshot of
+SKIP LOCKED`: coverages by the coverage workers (`RADIOPATH_WORKERS`, minutes each), link analyses, HF predictions
+and HF maps by a pool of short-job workers (one per CPU, seconds each), so a long coverage never delays a link. A job carries a snapshot of
 its input (sites, antennas with their patterns, parameters) and the hash of it; a request that asks for the same
 input gets the existing job, so a finished job is the cache of its result for an hour. Coverage jobs are followed
 by the page over the event stream; for everything else the request itself queues the job and waits for it, woken by

@@ -9,12 +9,30 @@ import (
 	"sync"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+
 	"github.com/radiopath/radiopath/internal/link"
 	"github.com/radiopath/radiopath/internal/store"
 )
 
 // Job kinds the short-job workers compute through RunJob.
-const kindLinkAnalysis = "link-analysis"
+const (
+	kindLinkAnalysis = "link-analysis"
+	kindHFPrediction = "hf-prediction"
+	kindHFMap        = "hf-map"
+)
+
+// publicErr is a failure whose text the worker stores on the job for the user to read.
+type publicErr string
+
+// Error implements error.
+func (e publicErr) Error() string { return string(e) }
+
+// Public implements the worker's publicError.
+func (e publicErr) Public() string { return string(e) }
+
+// errHFOff fails an HF job on a worker without the HF data set; the handler answers 503 with this text.
+const errHFOff = publicErr("The HF model is not configured on this server")
 
 const (
 	jobWait = 25 * time.Second // a request waits this long for its job before it gives up
@@ -61,6 +79,20 @@ func jobReason(err error) string {
 	return "Calculation failed."
 }
 
+// jobErr is the API error for a job that could not be queued or waited for: 499 when the client left, 429 at the
+// owner's limit, 503 with a full queue or after jobWait, 500 otherwise.
+func (s *Server) jobErr(ctx context.Context, err error) error {
+	switch {
+	case ctx.Err() != nil:
+		return errClientGone
+	case errors.Is(err, store.ErrQuota):
+		return huma.Error429TooManyRequests(jobReason(err))
+	case errors.Is(err, store.ErrBusy), errors.Is(err, errJobTimeout):
+		return huma.Error503ServiceUnavailable(jobReason(err))
+	}
+	return s.storeErr(err)
+}
+
 // RunJob computes a short job for the worker: it decodes the input of the job's kind, runs the model and encodes
 // the result. It needs the datasets, so it runs in worker processes only.
 func (s *Server) RunJob(ctx context.Context, j store.Job) ([]byte, error) {
@@ -75,6 +107,32 @@ func (s *Server) RunJob(ctx context.Context, j store.Job) ([]byte, error) {
 			return nil, err
 		}
 		return json.Marshal(res)
+	case kindHFPrediction, kindHFMap:
+		if s.HF == nil {
+			return nil, errHFOff
+		}
+		var in hfJob
+		if err := json.Unmarshal(j.Input, &in); err != nil {
+			return nil, err
+		}
+		in.Request.TxAntenna.Pattern = in.TxAntenna.pattern()
+		in.Request.RxAntenna.Pattern = in.RxAntenna.pattern()
+		if j.Kind == kindHFMap {
+			m, err := hfMapCompute(ctx, s.HF, in.Request)
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(m)
+		}
+		res, err := s.HF.Predict(in.Request)
+		if err != nil {
+			return nil, err
+		}
+		out := HFPrediction{Points: make([]HFPoint, 0, len(res.Points))}
+		for _, p := range res.Points {
+			out.Points = append(out.Points, toHFPoint(p))
+		}
+		return json.Marshal(out)
 	}
 	return nil, fmt.Errorf("unknown job kind %q", j.Kind)
 }

@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"math"
 	"net/http"
 
@@ -101,6 +102,56 @@ type HFPrediction struct {
 
 type HFPredictionOutput struct{ Body HFPrediction }
 
+// hfJob is the input snapshot of an HF job: the model request and the stored antennas of both ends, whose pattern
+// functions the worker rebuilds (a function has no JSON).
+type hfJob struct {
+	Request              hf.Request
+	TxAntenna, RxAntenna *hfAntenna
+}
+
+// hfAntenna is a stored antenna as the HF model needs it: gain and both pattern cuts.
+type hfAntenna struct {
+	GainDBi float64
+	H, V    antenna.Pattern
+}
+
+// pattern returns the gain in dBi of the antenna at an azimuth offset from its main lobe and an elevation above the
+// horizon: its gain less the attenuation of its patterns, as for the links; nil for an isotropic one.
+func (a *hfAntenna) pattern() func(azimuthOffset, elevation float64) float64 {
+	if a == nil {
+		return nil
+	}
+	lobe := antenna.Lobe{H: a.H, V: a.V}
+	return func(azimuthOffset, elevation float64) float64 {
+		return a.GainDBi - lobe.AttenuationDB(azimuthOffset, elevation)
+	}
+}
+
+// hfRun has an HF job computed by a worker and decodes its result into out; a job that failed answers 503 without
+// the HF data set and 500 otherwise.
+func (s *Server) hfRun(ctx context.Context, owner int64, kind string, job hfJob, out any) error {
+	input, _ := json.Marshal(job)
+	j, err := s.runJob(ctx, owner, kind, input)
+	if err != nil {
+		if ctx.Err() == nil {
+			s.Log.Warn("hf job", "kind", kind, "err", err)
+		}
+		return s.jobErr(ctx, err)
+	}
+	if j.State == store.JobFailed {
+		if j.Error == errHFOff.Public() {
+			return huma.Error503ServiceUnavailable(j.Error)
+		}
+		s.Log.Error("hf job failed", "kind", kind, "job", j.ID, "err", j.Error)
+		return huma.Error500InternalServerError("Internal error")
+	}
+	if err := json.Unmarshal(j.Result, out); err != nil {
+		s.Log.Error("hf job result", "kind", kind, "job", j.ID, "err", err)
+		return huma.Error500InternalServerError("Internal error")
+	}
+	return nil
+}
+
 // parseHF validates a prediction input and returns the model request for the sites a and b.
 func parseHF(in HFPredictionInput, a, b store.Site) (hf.Request, error) {
 	var c check
@@ -196,15 +247,6 @@ func hasDuplicate[T comparable](s []T) bool {
 	return false
 }
 
-// hfPattern returns the gain in dBi of a stored antenna at an azimuth offset from its main lobe and an elevation above
-// the horizon: its gain less the attenuation of its patterns, as for the links.
-func hfPattern(a store.Antenna) func(azimuthOffset, elevation float64) float64 {
-	lobe := antenna.Lobe{H: a.PatternH, V: a.PatternV}
-	return func(azimuthOffset, elevation float64) float64 {
-		return a.GainDBi - lobe.AttenuationDB(azimuthOffset, elevation)
-	}
-}
-
 // finite returns v, or the "does not apply" value for NaN and infinities, which JSON cannot carry.
 func finite(v float64) float64 {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
@@ -234,9 +276,6 @@ func (s *Server) registerHF(api huma.API) {
 		"HF circuit prediction between two sites (ITU-R P.533), nothing is stored")
 	o.Errors = append(o.Errors, http.StatusUnprocessableEntity, http.StatusTooManyRequests, http.StatusServiceUnavailable)
 	huma.Register(api, o, func(ctx context.Context, in *struct{ Body HFPredictionInput }) (*HFPredictionOutput, error) {
-		if s.HF == nil {
-			return nil, huma.Error503ServiceUnavailable("The HF model is not configured on this server")
-		}
 		owner := userOf(ctx).ID
 		if err := s.computeHit(ctx, owner); err != nil {
 			return nil, err
@@ -253,10 +292,11 @@ func (s *Server) registerHF(api huma.API) {
 		if err != nil {
 			return nil, err
 		}
+		job := hfJob{Request: req}
 		for _, e := range []struct {
 			id  *int64
-			dst *hf.Antenna
-		}{{in.Body.TxAntennaID, &req.TxAntenna}, {in.Body.RxAntennaID, &req.RxAntenna}} {
+			dst **hfAntenna
+		}{{in.Body.TxAntennaID, &job.TxAntenna}, {in.Body.RxAntennaID, &job.RxAntenna}} {
 			if e.id == nil {
 				continue
 			}
@@ -264,17 +304,12 @@ func (s *Server) registerHF(api huma.API) {
 			if err != nil {
 				return nil, s.storeErr(err)
 			}
-			e.dst.Pattern = hfPattern(ant)
+			*e.dst = &hfAntenna{GainDBi: ant.GainDBi, H: ant.PatternH, V: ant.PatternV}
 		}
-		res, err := s.HF.Predict(req)
-		if err != nil {
-			s.Log.Error("hf prediction failed", "err", err)
-			return nil, huma.Error500InternalServerError("Internal error")
+		var out HFPrediction
+		if err := s.hfRun(ctx, owner, kindHFPrediction, job, &out); err != nil {
+			return nil, err
 		}
-		out := make([]HFPoint, 0, len(res.Points))
-		for _, p := range res.Points {
-			out = append(out, toHFPoint(p))
-		}
-		return &HFPredictionOutput{HFPrediction{Points: out}}, nil
+		return &HFPredictionOutput{out}, nil
 	})
 }

@@ -72,7 +72,7 @@ type Antenna struct {
 
 	// Pattern, when set, takes precedence over File and Data: the gain in dBi at an azimuth offset from the main
 	// beam (degrees, 0 to 359) and an elevation above the horizon (degrees, 0 to 90).
-	Pattern func(azimuthOffset, elevation float64) float64
+	Pattern func(azimuthOffset, elevation float64) float64 `json:"-"`
 }
 
 // Request is the input of one prediction: one path in one month, for a list

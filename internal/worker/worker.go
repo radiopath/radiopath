@@ -28,6 +28,9 @@ const (
 	shortStaleAfter = 5 * time.Minute
 )
 
+// publicError is an error of Compute whose text may be shown to the user; any other error becomes link.Reason.
+type publicError interface{ Public() string }
+
 // Worker claims and runs the jobs of one class: coverage jobs with Coverage, or every other kind with Compute.
 type Worker struct {
 	Name     string
@@ -106,6 +109,10 @@ func (w *Worker) runShort(ctx context.Context, j store.Job) {
 	}
 	if err != nil {
 		reason := link.Reason(err)
+		var pe publicError
+		if errors.As(err, &pe) {
+			reason = pe.Public()
+		}
 		if errors.Is(jobCtx.Err(), context.DeadlineExceeded) {
 			reason = fmt.Sprintf("The calculation took longer than %s.", shortTimeout)
 		}

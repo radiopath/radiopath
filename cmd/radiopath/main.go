@@ -366,7 +366,7 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 		log.Error("hf data set unusable, the HF model is off", "err", err)
 	}
 	var sunspots *sunspot.Source
-	if hfData != nil && cfg.sunspotURL != "" {
+	if cfg.sunspotURL != "" {
 		sunspots = sunspot.New(cfg.sunspotURL)
 	}
 	srv := &web.Server{
