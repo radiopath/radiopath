@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The HF reliability map is a flat world map drawn as SVG (Natural Earth coastlines, a rectangle per cell with its value as tooltip, markers A and B) instead of a Leaflet map on OpenStreetMap tiles: every cell has the same size, nothing is loaded from the tile server (by @HB9HIL)
 - The HF page asks for the time one way: a first and a last month (the same for one month) and the hours as from, to and every, which used to be the "several months" mode only; the year, month and hour list fields are gone and a prediction covers every hour of the day by default (by @HB9HIL)
 
+### Fixed
+- The API reference groups the HF operations under their own tag "HF" instead of "Account" (by @HB9HIL)
+
 ### Removed
 - The HF table by hour and frequency; the grid holds its figures (by @HB9HIL)
 

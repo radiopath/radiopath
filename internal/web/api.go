@@ -79,6 +79,7 @@ func (s *Server) apiConfig() huma.Config {
 	c.OpenAPI.OnAddOperation = append(c.OpenAPI.OnAddOperation, describeAccess)
 	c.Tags = []*huma.Tag{
 		{Name: "Sites"}, {Name: "Antennas"}, {Name: "Links"}, {Name: "Coverages"},
+		{Name: "HF", Description: "Ionospheric predictions (ITU-R P.533) between two sites, reliability maps and the sunspot numbers they use; nothing is stored."},
 		{Name: "Shared pages", Description: "Read-only views of shared links and coverages; anyone with the share token may call them."},
 		{Name: "Account", Description: "Login, registration and the account itself; changes need a session, not a token."},
 		{Name: "API tokens", Description: "Managing personal API tokens needs a session; a token cannot create or list tokens."},
@@ -127,7 +128,7 @@ func op(id, method, path, scope, summary string) huma.Operation {
 func tagOf(path string) string {
 	for _, t := range []struct{ prefix, tag string }{
 		{"/api/sites", "Sites"}, {"/api/antennas", "Antennas"}, {"/api/links", "Links"}, {"/api/coverages", "Coverages"},
-		{"/api/share/", "Shared pages"}, {"/api/me/tokens", "API tokens"},
+		{"/api/hf", "HF"}, {"/api/share/", "Shared pages"}, {"/api/me/tokens", "API tokens"},
 	} {
 		if strings.HasPrefix(path, t.prefix) {
 			return t.tag
