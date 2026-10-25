@@ -16,10 +16,10 @@ test('reports fields that are no number', async ({ page }) => {
   await addSite(page, 'HF B', 46.95, 7.45)
   await page.goto('/hf')
   await expect(c(page, 'button', 'Predict')).toBeEnabled()
-  await page.locator('[name=year]').fill('abc')
+  await page.locator('[name=ssn]').fill('abc')
   await page.locator('[name=frequencies_mhz]').fill('7.1, x')
   await c(page, 'button', 'Predict').click()
-  await expect(toast(page, 'Year: not a number')).toBeVisible()
+  await expect(toast(page, 'Sunspot number: not a number')).toBeVisible()
   await expect(toast(page, 'Frequencies: not a list of numbers')).toBeVisible()
 })
 
@@ -133,7 +133,9 @@ test('shows the reliability map with an hour slider', async ({ page }) => {
   })
   await page.goto('/hf')
   await expect(c(page, 'button', 'Predict')).toBeEnabled()
-  await page.locator('[name=hours_utc]').fill('12, 6')
+  await page.locator('[name=range_from]').fill('6')
+  await page.locator('[name=range_to]').fill('12')
+  await page.locator('[name=range_step]').fill('6')
   await c(page, 'button', 'Predict').click()
 
   const panel = page.getByRole('region', { name: 'Reliability map' })
@@ -155,7 +157,7 @@ test('shows the reliability map with an hour slider', async ({ page }) => {
   expect(maps[1].frequency_mhz).toBe(14.2)
 
   // one hour needs no slider
-  await page.locator('[name=hours_utc]').fill('12')
+  await page.locator('[name=range_from]').fill('12')
   await c(page, 'button', 'Predict').click()
   await expect(panel.getByText('12:00 UTC')).toBeVisible()
   await expect(panel.locator('[name=map_hour]')).toHaveCount(0)
@@ -176,9 +178,11 @@ test('shows why the map is missing', async ({ page }) => {
 
 test('fills the sunspot number from the server until it is typed', async ({ page }) => {
   // the value of a month is 100 plus the month; the page starts in the current month
-  const m0 = new Date().getMonth() + 1
-  const m1 = (m0 % 12) + 1
-  const m2 = (m1 % 12) + 1
+  const ym = (offset) => {
+    const d = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + offset))
+    return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, text: d.toISOString().slice(0, 7) }
+  }
+  const [m0, m1, m2] = [ym(0).month, ym(1).month, ym(2).month]
   const asked = []
   await page.route('**/api/hf/sunspots*', (route) => {
     const q = new URL(route.request().url()).searchParams
@@ -189,14 +193,14 @@ test('fills the sunspot number from the server until it is typed', async ({ page
   await expect(page.locator('[name=ssn]')).toHaveValue(String(100 + m0))
   await expect(page.getByTestId('ssn-source')).toContainText('predicted')
 
-  await page.locator('[name=month]').selectOption(String(m1))
+  await page.locator('[name=range_start]').fill(ym(1).text)
   await expect(page.locator('[name=ssn]')).toHaveValue(String(100 + m1))
 
   await page.locator('[name=ssn]').fill('120')
-  await page.locator('[name=month]').selectOption(String(m2))
+  await page.locator('[name=range_start]').fill(ym(2).text)
   await expect(page.getByTestId('ssn-source')).toContainText(String(100 + m2))
   await expect(page.locator('[name=ssn]')).toHaveValue('120')
-  expect(asked).toContain(`${new Date().getFullYear()}-${m1}`)
+  expect(asked).toContain(`${ym(1).year}-${m1}`)
 })
 
 test('keeps the default sunspot number when the server has no data', async ({ page }) => {
@@ -216,8 +220,6 @@ test('predicts every month of a range with the hours from, to and step', async (
   await page.goto('/hf')
   await expect(c(page, 'button', 'Predict')).toBeEnabled()
 
-  await page.locator('[name=date_mode]').selectOption('range')
-  await expect(page.locator('[name=year]')).toHaveCount(0)
   await page.locator('[name=range_start]').fill('2026-03')
   await page.locator('[name=range_end]').fill('2026-05')
   await page.locator('[name=range_from]').fill('0')
@@ -237,7 +239,6 @@ test('predicts every month of a range with the hours from, to and step', async (
 test('rejects a range that ends before it starts or has a bad hour window', async ({ page }) => {
   await page.goto('/hf')
   await expect(c(page, 'button', 'Predict')).toBeEnabled()
-  await page.locator('[name=date_mode]').selectOption('range')
   await page.locator('[name=range_start]').fill('2026-05')
   await page.locator('[name=range_end]').fill('2026-03')
   await page.locator('[name=range_to]').fill('30')

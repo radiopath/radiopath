@@ -52,16 +52,12 @@
 	let v = $state({
 		site_a_id: '',
 		site_b_id: '',
-		date_mode: 'month',
 		range_start: now.toISOString().slice(0, 7),
 		range_end: now.toISOString().slice(0, 7),
 		range_from: '0',
 		range_to: '23',
-		range_step: '6',
-		year: String(now.getFullYear()),
-		month: String(now.getMonth() + 1),
+		range_step: '1',
 		ssn: '60',
-		hours_utc: '6, 12, 18',
 		frequencies_mhz: '7.1, 14.2',
 		tx_power_dbm: '50',
 		tx_gain_dbi: '0',
@@ -103,10 +99,9 @@
 
 	const mode = $derived(modes.find((m) => m.id === v.mode));
 
-	// The smoothed sunspot number of the chosen month from NOAA SWPC; a 404 (no data on the server) just leaves the field alone.
+	// The smoothed sunspot number of the first month from NOAA SWPC; a 404 (no data on the server) just leaves the field alone.
 	let ssnEdited = $state(false);
 	const sunWhen = $derived.by(() => {
-		if (v.date_mode === 'month') return { year: parseNum(v.year), month: parseNum(v.month) };
 		const i = monthIndex(v.range_start);
 		return { year: Math.floor(i / 12), month: (i % 12) + 1 };
 	});
@@ -153,18 +148,8 @@
 		return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : NaN;
 	}
 
-	/** The months and hours to predict: the typed month and hours, or every month from the start to the end with the hours from, to and step. Problems go to bad. */
+	/** The months and hours to predict: every month from the first to the last with the hours from, to and step. Problems go to bad. */
 	function periods(bad: string[]): Period[] {
-		if (v.date_mode === 'month') {
-			const year = parseNum(v.year);
-			const month = parseNum(v.month);
-			const hours = list(v.hours_utc);
-			if (isNaN(year)) bad.push('Year: not a number');
-			if (isNaN(month)) bad.push('Month: not a number');
-			if (hours.some(isNaN)) bad.push('Hours: not a list of numbers');
-			if (new Set(hours).size !== hours.length) bad.push('Hours: remove duplicates');
-			return [{ year, month, hours }];
-		}
 		const a = monthIndex(v.range_start);
 		const b = monthIndex(v.range_end);
 		const from = parseNum(v.range_from);
@@ -339,9 +324,9 @@
 		void loadMap(r.body, r.body.frequencies_mhz.includes(heatFreq) ? heatFreq : r.body.frequencies_mhz[0]);
 	}
 
-	/** Until the user typed a sunspot number, a range uses the value of NOAA SWPC for each month. */
+	/** Until the user typed a sunspot number, each month uses the value of NOAA SWPC. */
 	async function withSunspots(bs: HFPredictionInput[]): Promise<HFPredictionInput[]> {
-		if (ssnEdited || v.date_mode === 'month') return bs;
+		if (ssnEdited) return bs;
 		return Promise.all(
 			bs.map(async (b) => {
 				const s = await qc
@@ -470,51 +455,34 @@
 		</fieldset>
 		<fieldset class="grid gap-3">
 			<legend class="mb-2 w-full border-b pb-1 text-xs font-medium text-muted-foreground">Time and ionosphere</legend>
-			<Field wide label="Dates">
-				<NativeSelect class="w-68" name="date_mode" bind:value={v.date_mode}>
-					<option value="month">one month</option>
-					<option value="range">several months</option>
-				</NativeSelect>
+			<Field wide label="First month">
+				<Input class="max-w-68 font-mono" type="month" name="range_start" bind:value={v.range_start} />
 			</Field>
-			{#if v.date_mode === 'month'}
-				<Field wide label="Year"><Input class="max-w-68 font-mono" name="year" inputmode="numeric" bind:value={v.year} /></Field>
-				<Field wide label="Month">
-					<NativeSelect class="w-68" name="month" bind:value={v.month}>
-						{#each monthNames as m, i (m)}<option value={String(i + 1)}>{m}</option>{/each}
-					</NativeSelect>
-				</Field>
-				<Field wide label="Hours (UTC, 1 to 24)">
-					<Input class="max-w-68 font-mono" name="hours_utc" placeholder="6, 12, 18" bind:value={v.hours_utc} />
-				</Field>
-			{:else}
-				<Field wide label="First month">
-					<Input class="max-w-68 font-mono" type="month" name="range_start" bind:value={v.range_start} />
-				</Field>
-				<Field wide label="Last month">
-					<Input class="max-w-68 font-mono" type="month" name="range_end" bind:value={v.range_end} />
-				</Field>
-				<Field wide label="Hours (UTC, 0 to 23)">
-					<span class="flex items-center gap-2">
-						<Input class="w-20 font-mono" name="range_from" inputmode="numeric" aria-label="From hour" bind:value={v.range_from} />
-						<span class="text-xs text-muted-foreground">to</span>
-						<Input class="w-20 font-mono" name="range_to" inputmode="numeric" aria-label="To hour" bind:value={v.range_to} />
-						<span class="text-xs text-muted-foreground">every</span>
-						<Input class="w-20 font-mono" name="range_step" inputmode="numeric" aria-label="Step in hours" bind:value={v.range_step} />
-						<span class="text-xs text-muted-foreground">h</span>
-					</span>
-				</Field>
-				<p class="text-xs text-muted-foreground">
-					The model gives the median day of each month at each hour, so there is no day to pick: each month of the range is one prediction.
-				</p>
-			{/if}
+			<Field wide label="Last month">
+				<Input class="max-w-68 font-mono" type="month" name="range_end" bind:value={v.range_end} />
+			</Field>
+			<Field wide label="Hours (UTC, 0 to 23)">
+				<span class="flex items-center gap-2">
+					<Input class="w-20 font-mono" name="range_from" inputmode="numeric" aria-label="From hour" bind:value={v.range_from} />
+					<span class="text-xs text-muted-foreground">to</span>
+					<Input class="w-20 font-mono" name="range_to" inputmode="numeric" aria-label="To hour" bind:value={v.range_to} />
+					<span class="text-xs text-muted-foreground">every</span>
+					<Input class="w-20 font-mono" name="range_step" inputmode="numeric" aria-label="Step in hours" bind:value={v.range_step} />
+					<span class="text-xs text-muted-foreground">h</span>
+				</span>
+			</Field>
+			<p class="text-xs text-muted-foreground">
+				The model gives the median day of each month at each hour, so there is no day to pick: each month from the first to the last (at most
+				{maxMonths}) is one prediction.
+			</p>
 			<Field wide label="Sunspot number (R12)">
 				<Input class="max-w-68 font-mono" name="ssn" inputmode="numeric" bind:value={v.ssn} oninput={() => (ssnEdited = true)} />
 			</Field>
 			{#if sunspot.data}
 				<p class="text-xs text-muted-foreground" data-testid="ssn-source">
-					{sunspot.data.ssn}, {sunspot.data.source} smoothed value of {sunspot.data.reference} for {v.date_mode === 'range'
-						? 'the first month, the others get their own'
-						: 'this month'}
+					{sunspot.data.ssn}, {sunspot.data.source} smoothed value of {sunspot.data.reference} for {v.range_start === v.range_end
+						? 'this month'
+						: 'the first month, the others get their own'}
 				</p>
 			{/if}
 		</fieldset>

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The HF page asks for the time one way: a first and a last month (the same for one month) and the hours as from, to and every, which used to be the "several months" mode only; the year, month and hour list fields are gone and a prediction covers every hour of the day by default (by @HB9HIL)
+
 ## [2.1.0] - 2026-10-25
 
 > With the Helm chart, update to 2.2.0 together with this image: it runs web pods in `RADIOPATH_MODE=web` (no datasets, less memory) and worker pods in `RADIOPATH_MODE=worker` with the HF data set, which the workers compute from now on. An older chart leaves the workers without HF data, and HF answers 503 until both are updated.
