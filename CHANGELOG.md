@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The HF model builds the 24 hour control point table of a long path (7000 km and more) once per path instead of once per hour and frequency: a prediction of 24 hours and 30 frequencies takes 14 ms instead of 650 ms, a reliability map 1.5 s instead of 9 s of CPU time, with results identical to the bit (by @HB9HIL)
+
 ### Chore
 - Benchmarks of an HF prediction and of a reliability map, and a golden test that hashes every reference case bit for bit (`testdata/golden_<arch>.txt`), so performance work on the HF model can prove it left the results alone (by @HB9HIL)
 

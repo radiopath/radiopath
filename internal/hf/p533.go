@@ -258,6 +258,10 @@ type pathData struct {
 
 	CP [5]controlPt
 
+	// longCP is the 24 hour control point table of the long path model, built on first use (see
+	// medianSkywaveFieldStrengthLong).
+	longCP *[maxCP][24]controlPt
+
 	Md_F2 [maxF2Mds]mode
 	Md_E  [maxEMds]mode
 

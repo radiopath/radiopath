@@ -35,8 +35,6 @@ func medianSkywaveFieldStrengthLong(p *pathData) {
 
 	var fracd, f, etl, d float64
 
-	var cp [maxCP][24]controlPt
-
 	elevation := 2.0 * pi
 
 	// Only for paths of 7000 km and more; between 7000 and 9000 km the field
@@ -87,52 +85,60 @@ func medianSkywaveFieldStrengthLong(p *pathData) {
 
 		dh90 = r0 * phi
 
-		// The path is used to determine the data at the control points.
-		hour = p.hour
+		// The table depends on the path, the month and the SSN only, so it is built once per path and reused by
+		// every hour and frequency.
+		cp := p.longCP
+		if cp == nil {
+			cp = new([maxCP][24]controlPt)
+			p.longCP = cp
 
-		for j = 0; j < 24; j++ { // hours
-			p.hour = j
+			// The path is used to determine the data at the control points.
+			hour = p.hour
 
-			for i = 0; i <= nL; i++ { // 90-km penetration points
-				zeroCP(&cp[2*i][j])
-				zeroCP(&cp[(2*i)+1][j])
+			for j = 0; j < 24; j++ { // hours
+				p.hour = j
 
-				// Two control points per hop: first the end nearest the tx.
-				fracd = (float64(i)*dL + dh90) / p.distance
-				greatCirclePoint(p.L_tx, p.L_rx, &cp[2*i][j], p.distance, fracd)
-				calculateCPParameters(p, &cp[2*i][j])
+				for i = 0; i <= nL; i++ { // 90-km penetration points
+					zeroCP(&cp[2*i][j])
+					zeroCP(&cp[(2*i)+1][j])
 
-				cp[2*i][j].hr = 90.0
+					// Two control points per hop: first the end nearest the tx.
+					fracd = (float64(i)*dL + dh90) / p.distance
+					greatCirclePoint(p.L_tx, p.L_rx, &cp[2*i][j], p.distance, fracd)
+					calculateCPParameters(p, &cp[2*i][j])
 
-				// Next the end nearest the receiver for this hop.
-				fracd = (float64(i+1)*dL - dh90) / p.distance
-				greatCirclePoint(p.L_tx, p.L_rx, &cp[(2*i)+1][j], p.distance, fracd)
-				calculateCPParameters(p, &cp[(2*i)+1][j])
+					cp[2*i][j].hr = 90.0
 
-				cp[(2*i)+1][j].hr = 90.0
+					// Next the end nearest the receiver for this hop.
+					fracd = (float64(i+1)*dL - dh90) / p.distance
+					greatCirclePoint(p.L_tx, p.L_rx, &cp[(2*i)+1][j], p.distance, fracd)
+					calculateCPParameters(p, &cp[(2*i)+1][j])
+
+					cp[(2*i)+1][j].hr = 90.0
+				}
+
+				// The control points T + d0/2 and R - d0/2 of Table 1a are the
+				// last two in the array.
+				fracd = (1.0 / (2.0 * float64(nM+1)))
+				greatCirclePoint(p.L_tx, p.L_rx, &cp[tdM2][j], p.distance, fracd)
+				fracd = (1.0 - (1.0 / (2.0 * float64(nM+1))))
+				greatCirclePoint(p.L_tx, p.L_rx, &cp[rdM2][j], p.distance, fracd)
+
+				calculateCPParameters(p, &cp[tdM2][j])
+				calculateCPParameters(p, &cp[rdM2][j])
+
+				cp[tdM2][j].x = 0.0
+				cp[tdM2][j].foE = 0.0
+				cp[tdM2][j].hr = 300.0 // fixed at 300 km for this calculation
+
+				cp[rdM2][j].x = 0.0
+				cp[rdM2][j].foE = 0.0
+				cp[rdM2][j].hr = 300.0
 			}
 
-			// The control points T + d0/2 and R - d0/2 of Table 1a are the
-			// last two in the array.
-			fracd = (1.0 / (2.0 * float64(nM+1)))
-			greatCirclePoint(p.L_tx, p.L_rx, &cp[tdM2][j], p.distance, fracd)
-			fracd = (1.0 - (1.0 / (2.0 * float64(nM+1))))
-			greatCirclePoint(p.L_tx, p.L_rx, &cp[rdM2][j], p.distance, fracd)
-
-			calculateCPParameters(p, &cp[tdM2][j])
-			calculateCPParameters(p, &cp[rdM2][j])
-
-			cp[tdM2][j].x = 0.0
-			cp[tdM2][j].foE = 0.0
-			cp[tdM2][j].hr = 300.0 // fixed at 300 km for this calculation
-
-			cp[rdM2][j].x = 0.0
-			cp[rdM2][j].foE = 0.0
-			cp[rdM2][j].hr = 300.0
+			// Restore the hour.
+			p.hour = hour
 		}
-
-		// Restore the hour.
-		p.hour = hour
 
 		// The data of the control points is now available.
 
@@ -159,10 +165,10 @@ func medianSkywaveFieldStrengthLong(p *pathData) {
 		p.fH = (cp[tdM2][p.hour].fH[hr300km] + cp[rdM2][p.hour].fH[hr300km]) / 2.0
 
 		// The MUF fM.
-		findMUFsandfM(p, &cp, nM, dM)
+		findMUFsandfM(p, cp, nM, dM)
 
 		// The lower frequency.
-		findfL(p, &cp, nL, dL, p.ptick, p.fH, i90)
+		findfL(p, cp, nL, dL, p.ptick, p.fH, i90)
 
 		f = p.frequency
 
