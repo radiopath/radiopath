@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-25
+
 ### Added
 - The MUF and reliability charts of the HF page show a crosshair with the values of the hour under the pointer, shared by both charts and the reliability grid, which marks the column of that hour (by @HB9HIL)
 - The HF map draws the great circle from A to B, dashed for the long path (by @HB9HIL)
