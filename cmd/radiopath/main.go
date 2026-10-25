@@ -46,6 +46,7 @@ const unconfirmedMaxAge = 7 * 24 * time.Hour
 const expiredTokenKeep = 30 * 24 * time.Hour
 
 type config struct {
+	mode          string // all, web or worker
 	databaseURL   string
 	demDir        string
 	s3            s3.Client
@@ -74,11 +75,15 @@ type config struct {
 // loadConfig reads the RADIOPATH_* and DATABASE_URL environment into a config; it rejects registration without SMTP.
 func loadConfig() (config, error) {
 	c := config{
+		mode:          envOr("RADIOPATH_MODE", "all"),
 		databaseURL:   os.Getenv("DATABASE_URL"),
 		listen:        envOr("RADIOPATH_LISTEN", ":8080"),
 		metricsListen: ":9090",
 		redisURL:      os.Getenv("RADIOPATH_REDIS_URL"),
 		tileURL:       envOr("RADIOPATH_TILE_URL", tiles.DefaultUpstream),
+	}
+	if c.mode != "all" && c.mode != "web" && c.mode != "worker" {
+		return c, errors.New("RADIOPATH_MODE must be all, web or worker")
 	}
 	if v, ok := os.LookupEnv("RADIOPATH_METRICS_LISTEN"); ok {
 		c.metricsListen = v
@@ -171,12 +176,15 @@ var replaced = [][2]string{
 
 // datasets fills in where the terrain, canopy and HF data are: one root, a directory or an S3 bucket, with a folder
 // (key prefix) per dataset. An empty RADIOPATH_DATASET_CANOPY or RADIOPATH_DATASET_HF, or a missing folder, means no
-// vegetation model or no HF model.
+// vegetation model or no HF model. A web process computes nothing and needs no datasets.
 func datasets(c *config) error {
 	for _, r := range replaced {
 		if _, ok := os.LookupEnv(r[0]); ok {
 			return fmt.Errorf("%s is no longer read; use %s (see docs/reference/configuration.md)", r[0], r[1])
 		}
+	}
+	if c.mode == "web" {
+		return nil
 	}
 	demName := envOr("RADIOPATH_DATASET_DEM", "srtm1")
 	canopyName, ok := os.LookupEnv("RADIOPATH_DATASET_CANOPY")
@@ -314,9 +322,12 @@ func openHF(ctx context.Context, cfg config, log *slog.Logger) (*hf.Data, func()
 	return d, cleanup, nil
 }
 
-// run starts the store, workers, janitor, metrics and HTTP server, and shuts them down in order on cancel or listen error.
+// run starts the store, and by RADIOPATH_MODE the web server (web, all) and the workers with their datasets (worker,
+// all), plus janitor and metrics in every mode, and shuts them down in order on cancel or listen error. A worker
+// process serves only the probes.
 func run(ctx context.Context, cfg config, log *slog.Logger) error {
-	log.Info("starting", "version", version, "workers", cfg.workers, "listen", cfg.listen, "metrics", cfg.metricsListen)
+	serveWeb, compute := cfg.mode != "worker", cfg.mode != "web"
+	log.Info("starting", "version", version, "mode", cfg.mode, "workers", cfg.workers, "listen", cfg.listen, "metrics", cfg.metricsListen)
 	st, err := store.New(ctx, cfg.databaseURL)
 	if err != nil {
 		return err
@@ -326,56 +337,9 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 		return err
 	}
 
-	proxy := &tiles.Proxy{Upstream: cfg.tileURL, TTL: cfg.tileTTL, MissesPerIP: cfg.tileMisses, Log: log}
-	if cfg.redisURL != "" {
-		rc, err := tiles.NewRedisCache(cfg.redisURL)
-		if err != nil {
-			return err
-		}
-		defer rc.Close()
-		proxy.Cache = rc
-	} else {
-		log.Warn("RADIOPATH_REDIS_URL not set, map tiles are not cached")
-	}
-
-	var src dem.Source
-	demReady := func() error { return nil }
-	if cfg.s3.Bucket != "" {
-		src = dem.NewS3Source(&cfg.s3, cfg.s3Prefix, cfg.demCacheTiles)
-		log.Info("dem source", "s3", cfg.s3.Endpoint, "bucket", cfg.s3.Bucket, "prefix", cfg.s3Prefix, "signed", cfg.s3.AccessKey != "")
-	} else {
-		d := dem.NewDirSource(cfg.demDir, cfg.demCacheTiles)
-		src, demReady = d, d.Ready
-		log.Info("dem source", "dir", cfg.demDir)
-	}
-	var canopy dem.Canopy
-	switch {
-	case cfg.s3.Bucket != "" && cfg.canopyPrefix != "":
-		canopy = dem.NewS3Canopy(&cfg.s3, cfg.canopyPrefix, cfg.demCacheTiles)
-		log.Info("canopy source", "s3", cfg.s3.Endpoint, "bucket", cfg.s3.Bucket, "prefix", cfg.canopyPrefix)
-	case cfg.canopyDir != "":
-		if _, err := os.ReadDir(cfg.canopyDir); err != nil {
-			return fmt.Errorf("canopy dir: %w", err)
-		}
-		canopy = dem.NewDirCanopy(cfg.canopyDir, cfg.demCacheTiles)
-		log.Info("canopy source", "dir", cfg.canopyDir)
-	}
-	hfData, closeHF, err := openHF(ctx, cfg, log)
-	defer closeHF()
-	if err != nil {
-		log.Error("hf data set unusable, the HF model is off", "err", err)
-	}
-	var sunspots *sunspot.Source
-	if cfg.sunspotURL != "" {
-		sunspots = sunspot.New(cfg.sunspotURL)
-	}
 	srv := &web.Server{
 		Store:        st,
-		HF:           hfData,
-		Sunspots:     sunspots,
-		Analyzer:     link.Calculator{DEM: src, Canopy: canopy},
-		Tiles:        proxy,
-		DEMReady:     demReady,
+		DEMReady:     func() error { return nil },
 		Registration: cfg.registration,
 		TrustProxy:   cfg.trustProxy,
 		AdminToken:   cfg.adminToken,
@@ -384,14 +348,66 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 		UI:           webui.FS(),
 		Log:          log,
 	}
-	if cfg.smtp.Host != "" {
-		srv.Mail = cfg.smtp
-		log.Info("mail service started", "smtp", cfg.smtp.Host, "from", cfg.smtp.From, "base_url", cfg.baseURL)
+	if serveWeb {
+		proxy := &tiles.Proxy{Upstream: cfg.tileURL, TTL: cfg.tileTTL, MissesPerIP: cfg.tileMisses, Log: log}
+		if cfg.redisURL != "" {
+			rc, err := tiles.NewRedisCache(cfg.redisURL)
+			if err != nil {
+				return err
+			}
+			defer rc.Close()
+			proxy.Cache = rc
+		} else {
+			log.Warn("RADIOPATH_REDIS_URL not set, map tiles are not cached")
+		}
+		srv.Tiles = proxy
+		if cfg.sunspotURL != "" {
+			srv.Sunspots = sunspot.New(cfg.sunspotURL)
+		}
+		if cfg.smtp.Host != "" {
+			srv.Mail = cfg.smtp
+			log.Info("mail service started", "smtp", cfg.smtp.Host, "from", cfg.smtp.From, "base_url", cfg.baseURL)
+		}
 	}
 
+	var src dem.Source
+	if compute {
+		if cfg.s3.Bucket != "" {
+			src = dem.NewS3Source(&cfg.s3, cfg.s3Prefix, cfg.demCacheTiles)
+			log.Info("dem source", "s3", cfg.s3.Endpoint, "bucket", cfg.s3.Bucket, "prefix", cfg.s3Prefix, "signed", cfg.s3.AccessKey != "")
+		} else {
+			d := dem.NewDirSource(cfg.demDir, cfg.demCacheTiles)
+			src, srv.DEMReady = d, d.Ready
+			log.Info("dem source", "dir", cfg.demDir)
+		}
+		var canopy dem.Canopy
+		switch {
+		case cfg.s3.Bucket != "" && cfg.canopyPrefix != "":
+			canopy = dem.NewS3Canopy(&cfg.s3, cfg.canopyPrefix, cfg.demCacheTiles)
+			log.Info("canopy source", "s3", cfg.s3.Endpoint, "bucket", cfg.s3.Bucket, "prefix", cfg.canopyPrefix)
+		case cfg.canopyDir != "":
+			if _, err := os.ReadDir(cfg.canopyDir); err != nil {
+				return fmt.Errorf("canopy dir: %w", err)
+			}
+			canopy = dem.NewDirCanopy(cfg.canopyDir, cfg.demCacheTiles)
+			log.Info("canopy source", "dir", cfg.canopyDir)
+		}
+		srv.Analyzer = link.Calculator{DEM: src, Canopy: canopy}
+		hfData, closeHF, err := openHF(ctx, cfg, log)
+		defer closeHF()
+		if err != nil {
+			log.Error("hf data set unusable, the HF model is off", "err", err)
+		}
+		srv.HF = hfData
+	}
+
+	handler := srv.Health()
+	if serveWeb {
+		handler = srv.Handler()
+	}
 	httpSrv := &http.Server{
 		Addr:              cfg.listen,
-		Handler:           srv.Handler(),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		// the whole request, so a slowly trickled body cannot hold a connection; no WriteTimeout, it would cut the
 		// job event streams
@@ -406,41 +422,44 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 	workers.Add(1)
 	go func() { defer workers.Done(); janitor(workerCtx, st, log) }()
 
-	if sunspots != nil {
+	if srv.Sunspots != nil {
 		workers.Add(1)
-		go func() { defer workers.Done(); sunspots.Run(workerCtx, log) }()
+		go func() { defer workers.Done(); srv.Sunspots.Run(workerCtx, log) }()
 	}
 
-	// Notifications wake the workers and the requests that follow a job; both also poll in case one is lost.
-	wakeCoverage, wakeShort := make(chan struct{}, 1), make(chan struct{}, 1)
-	workers.Add(2)
-	go func() {
-		defer workers.Done()
-		st.Listen(workerCtx, store.ChanJobQueued, log, func(kind string) {
-			wake := wakeShort
-			if kind == store.KindCoverage {
-				wake = wakeCoverage
-			}
-			select {
-			case wake <- struct{}{}:
-			default:
-			}
-		})
-	}()
-	go func() { defer workers.Done(); st.Listen(workerCtx, store.ChanJobDone, log, srv.JobDone) }()
-
-	for i := 0; i < cfg.workers; i++ {
-		w := &worker.Worker{Name: fmt.Sprintf("%s/%d", host, i), Store: st, Coverage: coverage.Calculator{DEM: src}, Log: log, Wake: wakeCoverage}
+	// Notifications wake the requests that follow a job (web) and the workers (worker); both also poll in case one is lost.
+	if serveWeb {
 		workers.Add(1)
-		go func() { defer workers.Done(); w.Run(workerCtx) }()
+		go func() { defer workers.Done(); st.Listen(workerCtx, store.ChanJobDone, log, srv.JobDone) }()
 	}
-	// Short jobs (link analyses) run next to the coverage workers, one per CPU; a process without coverage workers
-	// computes nothing.
-	if cfg.workers > 0 {
-		for i := 0; i < runtime.GOMAXPROCS(0); i++ {
-			w := &worker.Worker{Name: fmt.Sprintf("%s/short/%d", host, i), Store: st, Compute: srv.RunJob, Log: log, Wake: wakeShort}
+	if compute {
+		wakeCoverage, wakeShort := make(chan struct{}, 1), make(chan struct{}, 1)
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			st.Listen(workerCtx, store.ChanJobQueued, log, func(kind string) {
+				wake := wakeShort
+				if kind == store.KindCoverage {
+					wake = wakeCoverage
+				}
+				select {
+				case wake <- struct{}{}:
+				default:
+				}
+			})
+		}()
+		for i := 0; i < cfg.workers; i++ {
+			w := &worker.Worker{Name: fmt.Sprintf("%s/%d", host, i), Store: st, Coverage: coverage.Calculator{DEM: src}, Log: log, Wake: wakeCoverage}
 			workers.Add(1)
 			go func() { defer workers.Done(); w.Run(workerCtx) }()
+		}
+		// Short jobs (link analyses, HF) run next to the coverage workers, one per CPU; RADIOPATH_WORKERS=0 computes nothing.
+		if cfg.workers > 0 {
+			for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+				w := &worker.Worker{Name: fmt.Sprintf("%s/short/%d", host, i), Store: st, Compute: srv.RunJob, Log: log, Wake: wakeShort}
+				workers.Add(1)
+				go func() { defer workers.Done(); w.Run(workerCtx) }()
+			}
 		}
 	}
 
@@ -457,7 +476,7 @@ func run(ctx context.Context, cfg config, log *slog.Logger) error {
 
 	errc := make(chan error, 1)
 	go func() {
-		log.Info("listening", "addr", cfg.listen, "workers", cfg.workers, "version", version)
+		log.Info("listening", "addr", cfg.listen, "mode", cfg.mode, "workers", cfg.workers, "version", version)
 		errc <- httpSrv.ListenAndServe()
 	}()
 

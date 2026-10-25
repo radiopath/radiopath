@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `RADIOPATH_MODE` splits the process: `web` serves the app and the API without datasets, S3 or `/tmp` and computes nothing; `worker` computes coverages, link analyses and HF with the datasets and serves only `/healthz` and `/readyz`; `all` (the default) does both as before (by @HB9HIL)
+
 ### Changed
 - The HF model builds the 24 hour control point table of a long path (7000 km and more) once per path instead of once per hour and frequency: a prediction of 24 hours and 30 frequencies takes 14 ms instead of 650 ms, a reliability map 1.5 s instead of 9 s of CPU time, with results identical to the bit (by @HB9HIL)
 - An isotropic HF antenna shares one elevation row between its 360 azimuths instead of allocating a 360 x 91 pattern: a reliability map allocates 110 MB instead of 470 MB (by @HB9HIL)

@@ -111,3 +111,24 @@ func TestDatasets(t *testing.T) {
 		})
 	}
 }
+
+// TestMode checks that a web process needs no datasets and that an unknown mode is refused.
+func TestMode(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://x")
+	t.Setenv("RADIOPATH_REGISTRATION", "false")
+	for _, k := range []string{"RADIOPATH_DATASET_DIR", "RADIOPATH_DATASET_S3_BUCKET"} {
+		t.Setenv(k, "")
+		os.Unsetenv(k)
+	}
+	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "RADIOPATH_DATASET_DIR") {
+		t.Errorf("mode all without datasets: err = %v, want the dataset root required", err)
+	}
+	t.Setenv("RADIOPATH_MODE", "web")
+	if c, err := loadConfig(); err != nil || c.mode != "web" || c.demDir != "" {
+		t.Errorf("mode web without datasets: %+v %v", c, err)
+	}
+	t.Setenv("RADIOPATH_MODE", "cluster")
+	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "RADIOPATH_MODE") {
+		t.Errorf("unknown mode: err = %v", err)
+	}
+}

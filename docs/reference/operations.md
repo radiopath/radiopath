@@ -20,10 +20,12 @@ The Helm chart, its values and the ingress/certificate setup are documented in
 [radiopath/helmchart](https://github.com/radiopath/helmchart). What the app
 itself offers an orchestrator:
 
-- `GET /healthz` liveness, `GET /readyz` readiness (database ping, DEM source
-  reachable, HF data files present when the HF data set is loaded, Redis ping
-  when configured). A failing check answers 503 `not ready`;
-  which part failed and why is only in the log (`not ready`, `part`, `err`).
+- `GET /healthz` liveness, `GET /readyz` readiness: database ping, and by
+  `RADIOPATH_MODE` the Redis ping when configured (web), the DEM source and the
+  HF data files when the HF data set is loaded (worker), all of them in mode
+  `all`. A failing check answers 503 `not ready`; which part failed and why is
+  only in the log (`not ready`, `part`, `err`). A worker process answers nothing
+  but these two.
 - `GET /metrics` on port 9090, a separate listener that is in no Service and no
   Ingress, see [Metrics and logging](metrics-and-logging.md).
 - Memory: about `RADIOPATH_DEM_CACHE_TILES` x 26 MB (x 39 MB with a canopy

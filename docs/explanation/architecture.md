@@ -4,17 +4,17 @@ How the parts of Radiopath fit together and why they are arranged this way.
 
 ## One binary
 
-`cmd/radiopath` reads its configuration from the environment and starts, in one process, the HTTP server, the
-coverage workers (`RADIOPATH_WORKERS`), an hourly janitor (expired sessions, mail tokens, API tokens expired for 30 days and rate limit entries,
+`cmd/radiopath` reads its configuration from the environment and starts, in one process (`RADIOPATH_MODE=all`), the
+HTTP server, the workers (`RADIOPATH_WORKERS`), an hourly janitor (expired sessions, mail tokens, API tokens expired for 30 days and rate limit entries,
 accounts never confirmed), and a second listener for
 Prometheus metrics. The same binary has a few subcommands: `openapi` prints the API description without a
 database, `useradd`, `userdel` and `users` manage accounts. Everything the server delivers is compiled in: database
 migrations, the admin templates and the built web app. A pod therefore needs only the binary, PostgreSQL with
 PostGIS, optionally Valkey for map tiles, and the terrain tiles.
 
-Web and compute can be scaled separately with the same image: pods with `RADIOPATH_WORKERS=0` only serve
-requests, pods with workers compute. All state is in PostgreSQL (sessions, rate limits, the job queue), so any
-replica can serve any request.
+Web and compute are scaled separately with the same image: pods in mode `web` serve requests and compute nothing,
+so they need no datasets, no S3 access and little memory; pods in mode `worker` compute the jobs and serve only the
+probes. All state is in PostgreSQL (sessions, rate limits, the job queue), so any replica can serve any request.
 
 ## Jobs
 

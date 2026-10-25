@@ -252,7 +252,9 @@ func (s *Server) readyz(w http.ResponseWriter, r *http.Request) {
 	if s.HF != nil {
 		parts = append(parts, part{"hf data", s.HF.Ready})
 	}
-	parts = append(parts, part{"tile cache", func() error { return s.Tiles.Ready(ctx) }})
+	if s.Tiles != nil {
+		parts = append(parts, part{"tile cache", func() error { return s.Tiles.Ready(ctx) }})
+	}
 	for _, c := range parts {
 		if err := c.err(); err != nil {
 			s.Log.Warn("not ready", "part", c.name, "err", err)
@@ -261,6 +263,14 @@ func (s *Server) readyz(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Write([]byte("ok\n"))
+}
+
+// Health serves only the probes, for a worker process: /healthz and /readyz (database, datasets).
+func (s *Server) Health() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok\n")) })
+	mux.HandleFunc("GET /readyz", s.readyz)
+	return mux
 }
 
 // render executes the named page template with the given status.
