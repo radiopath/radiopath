@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The configuration reference explains `pool_max_conns` in `DATABASE_URL` and how to size it against the server's `max_connections` (by @HB9HIL)
+
 ## [2.3.0] - 2026-10-25
 
 ### Added

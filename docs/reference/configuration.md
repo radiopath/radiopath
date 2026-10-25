@@ -6,7 +6,7 @@ the Deployment, secrets via `secretKeyRef`.
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | required | PostgreSQL URL, e.g. `postgres://user:pw@host:5432/radiopath` |
+| `DATABASE_URL` | required | PostgreSQL URL, e.g. `postgres://user:pw@host:5432/radiopath`. Pool settings go into the query, e.g. `?pool_max_conns=8`: without it every process opens up to as many connections as the host has CPUs (at least 4), so keep pods × pool below the server's `max_connections` |
 | `RADIOPATH_MODE` | `all` | What this process does. `web`: serves the app and the API, computes nothing and needs no datasets, S3 or `/tmp`; `worker`: computes the jobs with the datasets and serves only `/healthz` and `/readyz`; `all`: both in one process (development, single-node) |
 | `RADIOPATH_DATASET_DIR` | | Directory holding one folder per dataset, e.g. `/data` with `/data/srtm1/N47E009.hgt` (read-only volume in Kubernetes). Required unless the S3 bucket is configured; not read in mode `web` |
 | `RADIOPATH_DATASET_S3_ENDPOINT` | | S3-compatible endpoint, e.g. `https://s3.example.org`. Required with the bucket |
