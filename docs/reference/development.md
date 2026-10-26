@@ -34,6 +34,7 @@ well, or from `hf1` below an absolute `RADIOPATH_DATASET_DIR`, and skip without 
 | `make e2e` | web app, Linux binary, e2e image and all Playwright specs; see [Run and write end-to-end tests](../how-to/run-and-write-e2e-tests.md) |
 | `make e2e-run` | the specs against the binary already in `bin/`, as CI does |
 | `make docker` | the production image from `docker/Dockerfile` |
+| `make clean` | removes build and test output (`bin/`, `internal/webui/dist`, `web/.svelte-kit`, `e2e/test-results`); keeps `node_modules`, `.env` and `tmp/testfiles` |
 
 Other checks CI runs:
 

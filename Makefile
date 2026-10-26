@@ -12,7 +12,7 @@ WEB := $(NODE_RUN) -w /src/web node
 # The image follows @playwright/test in e2e/package.json, the one place Renovate updates.
 PLAYWRIGHT_IMAGE := mcr.microsoft.com/playwright:v$(shell sed -n 's/.*"@playwright\/test": "\([^"]*\)".*/\1/p' e2e/package.json)-noble
 
-.PHONY: dev test vet build docker web check format api e2e e2e-run FORCE
+.PHONY: dev test vet build docker web check format api e2e e2e-run clean FORCE
 
 .env:
 	cp .env.example .env
@@ -89,3 +89,7 @@ e2e-run: tmp/testfiles
 
 docker:
 	docker build -f docker/Dockerfile -t radiopath:dev .
+
+# Build and test output; dependencies, .env and the testfiles stay.
+clean:
+	rm -rf bin radiopath internal/webui/dist web/.svelte-kit e2e/test-results
