@@ -98,7 +98,7 @@
 			</rect>
 		{/if}
 	{/each}
-	<path d={night(sun.lat, sun.lon)} data-night fill="var(--cp-fg)" fill-opacity="0.18" />
+	<path d={night(sun.lat, sun.lon)} data-night fill="#000" fill-opacity="0.18" />
 	<circle cx={px(sun.lon)} cy={py(sun.lat)} r="2" data-sun fill="var(--cp-warn)"><title>Sun</title></circle>
 	{#if path}
 		<path d={path} data-path fill="none" stroke="var(--cp-fg)" stroke-width="0.8" stroke-dasharray={longPath ? '2 1.5' : undefined} />
