@@ -352,7 +352,13 @@ test('prints the report of every predicted month', async ({ page }) => {
   await page.locator('[name=range_end]').fill('2026-04')
   await c(page, 'button', 'Predict').click()
 
-  // the real server predicts again, which needs the ITU data set the e2e stack lacks
+  await page.route('**/api/hf/reports', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/problem+json',
+      json: { title: 'Service Unavailable', status: 503, detail: 'The HF model is not configured on this server' },
+    }),
+  )
   const failed = page.waitForEvent('popup')
   await c(page, 'button', 'Print report').click()
   await expect(toast(page, 'The HF model is not configured on this server')).toBeVisible()
