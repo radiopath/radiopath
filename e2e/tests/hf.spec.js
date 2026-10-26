@@ -363,8 +363,9 @@ test('prints the report of every predicted month', async ({ page }) => {
     body = route.request().postDataJSON()
     route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF\n' })
   })
+  // headless Chromium has no PDF viewer and saves the PDF instead of showing it, so the tab stays on about:blank
   const popup = page.waitForEvent('popup')
   await c(page, 'button', 'Print report').click()
-  await expect.poll(async () => (await popup).url()).toMatch(/^blob:/)
-  expect(body.predictions.map((p) => p.month)).toEqual([3, 4])
+  await expect.poll(() => body?.predictions.map((p) => p.month)).toEqual([3, 4])
+  expect((await popup).isClosed()).toBe(false)
 })
