@@ -5,7 +5,8 @@
 > — no installation, free to sign up. The rest of this README is about running and developing Radiopath.
 
 Radio coverage and link planning for amateur radio and beyond. Web application
-written in Go, inspired by Radio Mobile. Propagation is computed with the NTIA
+written in Go, inspired by [Radio Mobile Online by VE2DBE](https://www.ve2dbe.com/rmonline_s.asp).
+Propagation is computed with the NTIA
 Irregular Terrain Model (Longley-Rice), ported to Go from the public domain
 reference implementation (see `internal/itm/NOTICE`).
 
