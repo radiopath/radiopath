@@ -30,16 +30,20 @@ func rangeView(c store.CoverageWithSite) tiles.View {
 	return tiles.Fit(s, w, n, e, report.CoverageMapPx, report.CoverageMapPx, report.MapPad).Trim(s, w, n, e, report.MapPad)
 }
 
-// servePDF writes pdf inline as name.pdf, replacing non-ASCII, control and quote or slash characters in the file name; never cached.
+// servePDF writes pdf inline as name.pdf; never cached.
 func servePDF(w http.ResponseWriter, name string, pdf []byte) {
-	name = strings.Map(func(c rune) rune {
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `inline; filename="`+pdfName(name)+`.pdf"`)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write(pdf)
+}
+
+// pdfName replaces non-ASCII, control and quote or slash characters in a file name.
+func pdfName(name string) string {
+	return strings.Map(func(c rune) rune {
 		if c > unicode.MaxASCII || c < ' ' || strings.ContainsRune(`"\/`, c) {
 			return '_'
 		}
 		return c
 	}, name)
-	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", `inline; filename="`+name+`.pdf"`)
-	w.Header().Set("Cache-Control", "no-store")
-	w.Write(pdf)
 }

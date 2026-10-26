@@ -343,3 +343,28 @@ test('explains the cards with info buttons', async ({ page }) => {
   await page.getByRole('heading', { name: 'Circuit reliability by hour and frequency' }).click()
   await expect(page.getByRole('note')).toHaveCount(0)
 })
+
+test('prints the report of every predicted month', async ({ page }) => {
+  await page.route('**/api/hf/predictions', (route) => route.fulfill({ json: { points: [point(6, 7.1), point(12, 7.1)] } }))
+  await page.goto('/hf')
+  await expect(c(page, 'button', 'Predict')).toBeEnabled()
+  await page.locator('[name=range_start]').fill('2026-03')
+  await page.locator('[name=range_end]').fill('2026-04')
+  await c(page, 'button', 'Predict').click()
+
+  // the real server predicts again, which needs the ITU data set the e2e stack lacks
+  const failed = page.waitForEvent('popup')
+  await c(page, 'button', 'Print report').click()
+  await expect(toast(page, 'The HF model is not configured on this server')).toBeVisible()
+  await expect.poll(async () => (await failed).isClosed()).toBe(true)
+
+  let body
+  await page.route('**/api/hf/reports', (route) => {
+    body = route.request().postDataJSON()
+    route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF\n' })
+  })
+  const popup = page.waitForEvent('popup')
+  await c(page, 'button', 'Print report').click()
+  await expect.poll(async () => (await popup).url()).toMatch(/^blob:/)
+  expect(body.predictions.map((p) => p.month)).toEqual([3, 4])
+})

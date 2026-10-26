@@ -415,6 +415,27 @@
 		}
 	}
 
+	let reporting = $state(false);
+	/** Opens the PDF report of every predicted month; the server predicts them again, a cache hit right after Predict. */
+	async function printReport() {
+		if (!runs) return;
+		// Opened before the wait, or the popup blocker stops it.
+		const tab = window.open('', '_blank');
+		reporting = true;
+		try {
+			const pdf = await call(api.POST('/api/hf/reports', { body: { predictions: runs.map((r) => r.body) }, parseAs: 'blob' }));
+			const url = URL.createObjectURL(pdf as Blob);
+			if (tab) tab.location.href = url;
+			else location.assign(url);
+			setTimeout(() => URL.revokeObjectURL(url), 60_000);
+		} catch (err) {
+			tab?.close();
+			notifyError(err);
+		} finally {
+			reporting = false;
+		}
+	}
+
 	/** What the form asks for, like "3 months, 24 hours, 2 frequencies"; empty while a field is not a number. */
 	const size = $derived.by(() => {
 		const months = monthIndex(v.range_end) - monthIndex(v.range_start) + 1;
@@ -666,14 +687,21 @@
 			{#if stale}
 				<Notice>The form changed since this prediction; predict again to see the effect.</Notice>
 			{/if}
-			{#if runs && runs.length > 1}
-				<label class="flex items-center gap-3 text-sm">
-					<span class="text-muted-foreground">Month shown</span>
-					<NativeSelect class="w-48" name="period" value={run?.key} onchange={(e) => pickRun(e.currentTarget.value)}>
-						{#each runs as r (r.key)}<option value={r.key}>{r.label}</option>{/each}
-					</NativeSelect>
-					<span class="text-xs text-muted-foreground">for the map and the charts</span>
-				</label>
+			{#if runs}
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					{#if runs.length > 1}
+						<label class="flex items-center gap-3 text-sm">
+							<span class="text-muted-foreground">Month shown</span>
+							<NativeSelect class="w-48" name="period" value={run?.key} onchange={(e) => pickRun(e.currentTarget.value)}>
+								{#each runs as r (r.key)}<option value={r.key}>{r.label}</option>{/each}
+							</NativeSelect>
+							<span class="text-xs text-muted-foreground">for the map and the charts</span>
+						</label>
+					{/if}
+					<Button variant="outline" class="ml-auto" disabled={reporting || stale} onclick={printReport}>
+						{reporting ? 'Preparing report…' : 'Print report'}
+					</Button>
+				</div>
 			{/if}
 			{#if shown.length}
 				<StatTiles tiles={tiles()} />

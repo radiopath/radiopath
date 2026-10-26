@@ -3,13 +3,17 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/radiopath/radiopath/internal/antenna"
 	"github.com/radiopath/radiopath/internal/hf"
+	"github.com/radiopath/radiopath/internal/report"
 	"github.com/radiopath/radiopath/internal/store"
 )
 
@@ -270,46 +274,216 @@ func toHFPoint(p hf.Point) HFPoint {
 	}
 }
 
-// registerHF registers the HF propagation prediction (ITU-R P.533) between two of the user's sites.
+// hfResult is a prediction with the sites and the names of the stored antennas it used, empty for isotropic ones.
+type hfResult struct {
+	Points               []HFPoint
+	SiteA, SiteB         store.Site
+	TxAntenna, RxAntenna string
+}
+
+// hfPredict counts a calculation of owner, checks the input and has the prediction computed by a worker.
+func (s *Server) hfPredict(ctx context.Context, owner int64, in HFPredictionInput) (hfResult, error) {
+	var res hfResult
+	if err := s.computeHit(ctx, owner); err != nil {
+		return res, err
+	}
+	a, err := s.Store.GetSite(ctx, owner, in.SiteAID)
+	if err != nil {
+		return res, s.storeErr(err)
+	}
+	b, err := s.Store.GetSite(ctx, owner, in.SiteBID)
+	if err != nil {
+		return res, s.storeErr(err)
+	}
+	req, err := parseHF(in, a, b)
+	if err != nil {
+		return res, err
+	}
+	res.SiteA, res.SiteB = a, b
+	job := hfJob{Request: req}
+	for _, e := range []struct {
+		id   *int64
+		dst  **hfAntenna
+		name *string
+	}{{in.TxAntennaID, &job.TxAntenna, &res.TxAntenna}, {in.RxAntennaID, &job.RxAntenna, &res.RxAntenna}} {
+		if e.id == nil {
+			continue
+		}
+		ant, err := s.Store.GetAntenna(ctx, owner, *e.id)
+		if err != nil {
+			return res, s.storeErr(err)
+		}
+		*e.dst = &hfAntenna{GainDBi: ant.GainDBi, H: ant.PatternH, V: ant.PatternV}
+		*e.name = ant.Name
+	}
+	var out HFPrediction
+	if err := s.hfRun(ctx, owner, kindHFPrediction, job, &out); err != nil {
+		return res, err
+	}
+	res.Points = out.Points
+	return res, nil
+}
+
+// registerHF registers the HF propagation prediction (ITU-R P.533) between two of the user's sites and its PDF report.
 func (s *Server) registerHF(api huma.API) {
 	o := op("predict-hf", http.MethodPost, "/api/hf/predictions", scopeHFRead,
 		"HF circuit prediction between two sites (ITU-R P.533), nothing is stored")
 	o.Errors = append(o.Errors, http.StatusUnprocessableEntity, http.StatusTooManyRequests, http.StatusServiceUnavailable)
 	huma.Register(api, o, func(ctx context.Context, in *struct{ Body HFPredictionInput }) (*HFPredictionOutput, error) {
-		owner := userOf(ctx).ID
-		if err := s.computeHit(ctx, owner); err != nil {
-			return nil, err
-		}
-		a, err := s.Store.GetSite(ctx, owner, in.Body.SiteAID)
-		if err != nil {
-			return nil, s.storeErr(err)
-		}
-		b, err := s.Store.GetSite(ctx, owner, in.Body.SiteBID)
-		if err != nil {
-			return nil, s.storeErr(err)
-		}
-		req, err := parseHF(in.Body, a, b)
+		res, err := s.hfPredict(ctx, userOf(ctx).ID, in.Body)
 		if err != nil {
 			return nil, err
 		}
-		job := hfJob{Request: req}
-		for _, e := range []struct {
-			id  *int64
-			dst **hfAntenna
-		}{{in.Body.TxAntennaID, &job.TxAntenna}, {in.Body.RxAntennaID, &job.RxAntenna}} {
-			if e.id == nil {
-				continue
-			}
-			ant, err := s.Store.GetAntenna(ctx, owner, *e.id)
-			if err != nil {
-				return nil, s.storeErr(err)
-			}
-			*e.dst = &hfAntenna{GainDBi: ant.GainDBi, H: ant.PatternH, V: ant.PatternV}
-		}
-		var out HFPrediction
-		if err := s.hfRun(ctx, owner, kindHFPrediction, job, &out); err != nil {
-			return nil, err
-		}
-		return &HFPredictionOutput{out}, nil
+		return &HFPredictionOutput{HFPrediction{Points: res.Points}}, nil
 	})
+
+	o = op("report-hf", http.MethodPost, "/api/hf/reports", scopeHFRead,
+		"PDF report of an HF prediction over one or more months, nothing is stored")
+	o.Errors = append(o.Errors, http.StatusUnprocessableEntity, http.StatusTooManyRequests, http.StatusServiceUnavailable)
+	// huma would describe a []byte body as base64 JSON
+	o.Responses = map[string]*huma.Response{"200": {Description: "The report", Content: map[string]*huma.MediaType{
+		"application/pdf": {Schema: &huma.Schema{Type: "string", Format: "binary"}},
+	}}}
+	huma.Register(api, o, func(ctx context.Context, in *struct{ Body HFReportInput }) (*HFReportOutput, error) {
+		if err := checkHFReport(in.Body); err != nil {
+			return nil, err
+		}
+		u := userOf(ctx)
+		var first hfResult
+		months := make([]report.HFMonth, 0, len(in.Body.Predictions))
+		for i, p := range in.Body.Predictions {
+			res, err := s.hfPredict(ctx, u.ID, p)
+			if err != nil {
+				return nil, err
+			}
+			if i == 0 {
+				first = res
+			}
+			months = append(months, hfMonth(p, res.Points))
+		}
+		pdf, err := report.HFPDF(hfReport(in.Body.Predictions[0], first, months, u.Name))
+		if err != nil {
+			s.Log.Error("hf report", "err", err)
+			return nil, huma.Error500InternalServerError("Internal error")
+		}
+		return &HFReportOutput{
+			ContentType:        "application/pdf",
+			ContentDisposition: `inline; filename="` + pdfName(first.SiteA.Name+" - "+first.SiteB.Name) + `.pdf"`,
+			CacheControl:       "no-store",
+			Body:               pdf,
+		}, nil
+	})
+}
+
+type HFReportInput struct {
+	Predictions []HFPredictionInput `json:"predictions" doc:"One prediction per month, 1 to 12; they may differ only in year, month and ssn"`
+}
+
+type HFReportOutput struct {
+	ContentType        string `header:"Content-Type"`
+	ContentDisposition string `header:"Content-Disposition"`
+	CacheControl       string `header:"Cache-Control"`
+	Body               []byte
+}
+
+// maxHFMonths is the longest range the HF page predicts, one prediction per month.
+const maxHFMonths = 12
+
+// checkHFReport checks that a report has 1 to 12 predictions of the same circuit, so its parameters describe them all.
+func checkHFReport(in HFReportInput) error {
+	var c check
+	if len(in.Predictions) == 0 || len(in.Predictions) > maxHFMonths {
+		c.add("predictions", "Predictions: between 1 and 12")
+		return c.err()
+	}
+	// same circuit: equal once year, month and ssn are blanked
+	same := func(p HFPredictionInput) string {
+		p.Year, p.Month, p.SSN = 0, 0, 0
+		b, _ := json.Marshal(p)
+		return string(b)
+	}
+	for _, p := range in.Predictions[1:] {
+		if same(p) != same(in.Predictions[0]) {
+			c.add("predictions", "Predictions: may differ only in year, month and sunspot number")
+			break
+		}
+	}
+	return c.err()
+}
+
+// hfMonth returns the report view of one month: the reliability shown is the one of the SPA, overall for digital
+// modulation up to 9000 km and basic otherwise.
+func hfMonth(in HFPredictionInput, points []HFPoint) report.HFMonth {
+	m := report.HFMonth{Year: in.Year, Month: in.Month, SSN: in.SSN, Points: make([]report.HFPoint, 0, len(points))}
+	for _, p := range points {
+		rel := p.BasicReliabilityPct
+		if in.Modulation == "digital" && p.DistanceKm <= 9000 {
+			rel = p.OverallReliabilityPct
+		}
+		m.Points = append(m.Points, report.HFPoint{
+			Hour: p.HourUTC, FreqMHz: p.FrequencyMHz, MUF10: p.MUF10, MUF50: p.MUF50, MUF90: p.MUF90,
+			ReliabilityPct: rel, SNRDB: p.SNRDB, Mode: p.DominantMode,
+		})
+	}
+	return m
+}
+
+// hfReport returns the report input: the circuit of the first prediction and every month.
+func hfReport(in HFPredictionInput, res hfResult, months []report.HFMonth, user string) report.HF {
+	dist := float64(hfNotAvailable)
+	if len(res.Points) > 0 {
+		dist = res.Points[0].DistanceKm
+	}
+	path := "short path"
+	if in.LongPath {
+		path = "long path"
+	}
+	radio := [][]string{
+		{"Path", fmt.Sprintf("%.0f km, %s", dist, path)},
+		{"TX power", fmt.Sprintf("%.1f dBW (%s)", in.TxPowerDBW, watts(in.TxPowerDBW))},
+	}
+	for _, e := range []struct {
+		end, name, other string
+		gain             float64
+		az               *float64
+	}{{"TX", res.TxAntenna, "B", in.TxGainDBi, in.TxAzimuthDeg}, {"RX", res.RxAntenna, "A", in.RxGainDBi, in.RxAzimuthDeg}} {
+		if e.name == "" {
+			radio = append(radio, []string{e.end + " antenna", fmt.Sprintf("isotropic, %.1f dBi", e.gain)})
+			continue
+		}
+		az := "towards " + e.other
+		if e.az != nil {
+			az = fmt.Sprintf("%.0f deg", *e.az)
+		}
+		radio = append(radio, []string{e.end + " antenna", e.name + ", " + az})
+	}
+	mod := in.Modulation
+	if mod == "" {
+		mod = "analog"
+	}
+	radio = append(radio,
+		[]string{"Modulation / bandwidth", fmt.Sprintf("%s / %g Hz", mod, in.BandwidthHz)},
+		[]string{"Required SNR", fmt.Sprintf("%.1f dB, %d %% of the month", in.RequiredSNRDB, in.SNRPercentile)},
+		[]string{"Man-made noise", strings.ReplaceAll(in.NoiseEnvironment, "_", " ")})
+	if d := in.Digital; mod == "digital" && d != nil {
+		radio = append(radio,
+			[]string{"Required SIR", fmt.Sprintf("%.1f dB", d.RequiredSIRDB)},
+			[]string{"F0 / T0 / A", fmt.Sprintf("%g Hz / %g ms / %g dB", d.F0Hz, d.T0Ms, d.ADB)},
+			[]string{"TW / FW", fmt.Sprintf("%g ms / %g Hz", d.TWMs, d.FWHz)})
+	}
+	return report.HF{SiteA: res.SiteA, SiteB: res.SiteB, Radio: radio, Months: months, User: user, Generated: time.Now()}
+}
+
+// watts returns a power in dBW as "100 W", "1.5 kW" or "500 mW", like the HF page.
+func watts(dbw float64) string {
+	w := math.Pow(10, dbw/10)
+	switch {
+	case w >= 1000:
+		return fmt.Sprintf("%.1f kW", w/1000)
+	case w >= 10:
+		return fmt.Sprintf("%.0f W", w)
+	case w >= 1:
+		return fmt.Sprintf("%.1f W", w)
+	}
+	return fmt.Sprintf("%.0f mW", w*1000)
 }

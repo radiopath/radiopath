@@ -33,6 +33,14 @@ saved or printed from the browser's PDF viewer. The map is composed from the
 same tiles the proxy serves (`internal/tiles.Static`); when the tile server is
 unreachable the report still comes out, with a note in place of the map.
 
+"Print report" on the HF page posts the predicted months to `/api/hf/reports`.
+HF predictions are not stored, so the server predicts them again rather than
+printing figures sent by the browser; right after "Predict" the finished jobs
+answer from the job table. The report has no map: the conditions, the
+reliability of every month, hour and frequency as coloured cells, and per
+month a page of its own with the MUF and reliability charts and a table per
+hour.
+
 Light and dark theme are picked from the system setting and can be switched in
 the header; the choice is stored in `localStorage` and applied before first
 paint. Colours are CSS variables (`--cp-*`) redefined under `[data-theme=dark]`,

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The configuration reference explains `pool_max_conns` in `DATABASE_URL` and how to size it against the server's `max_connections` (by @HB9HIL)
 - `make clean` removes the build and test output (by @HB9HIL)
+- HF prediction: "Print report" turns the predicted months into a PDF with the conditions, the reliability grid and per month the MUF and reliability charts and an hourly table (by @HB9HIL)
 
 ### Fixed
 

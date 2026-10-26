@@ -25,7 +25,7 @@ in the app ([how-to](../how-to/use-the-api-with-a-token.md)), as `Authorization:
   | `antennas:read`, `antennas:write` | `/api/antennas` |
   | `links:read`, `links:write` | `/api/links`, `links:read` also `/links/{id}/report.pdf` |
   | `coverages:read`, `coverages:write` | `/api/coverages`, `coverages:read` also the rasters, report and events |
-  | `hf:read` | `POST /api/hf/predictions`, `POST /api/hf/maps`, `GET /api/hf/sunspots`; there is no write scope, nothing is stored |
+  | `hf:read` | `POST /api/hf/predictions`, `POST /api/hf/reports`, `POST /api/hf/maps`, `GET /api/hf/sunspots`; there is no write scope, nothing is stored |
   | `account:read` | `GET /api/me` |
 
   A write scope is stored together with the read scope of the same resource. Account settings
@@ -82,6 +82,13 @@ SNR, circuit reliability and the dominant mode with its delay, elevation and los
 quantity does not apply to the path. Beyond 7000 km the model reports the field strength of the whole path and no
 single modes, so `dominant_mode` is `NONE` there. `overall_reliability_pct` is only calculated for digital
 modulation up to 9000 km and is 0 otherwise; use `basic_reliability_pct` for analog modulation.
+
+`POST /api/hf/reports` (scope `hf:read`, session) returns the PDF report of a prediction over one or more months:
+the body is `{"predictions": [...]}` with 1 to 12 prediction bodies that may differ only in `year`, `month` and `ssn`.
+The server predicts every month again (a cache hit right after the same prediction) and answers `application/pdf`
+with the conditions, the reliability per month, hour and frequency, and one page per month with the MUF and reliability
+charts and a table per hour. Each month counts as one calculation; the errors are those of a prediction. The web app's button
+"Print report" on `/hf` sends the months it shows.
 
 `POST /api/hf/maps` (scope `hf:read`, session) answers the same question for the whole globe: the circuit from one
 site to the centre of every 10 degree cell, for one frequency and the requested hours, with isotropic antennas

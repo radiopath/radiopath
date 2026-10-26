@@ -167,3 +167,23 @@ func hfDataDir(t *testing.T) string {
 	}
 	return dir
 }
+
+// A report takes 1 to 12 predictions of one circuit; the months may differ only in year, month and sunspot number.
+func TestCheckHFReport(t *testing.T) {
+	next := hfInput()
+	next.Month, next.SSN = 5, 70
+	if err := checkHFReport(HFReportInput{Predictions: []HFPredictionInput{hfInput(), next}}); err != nil {
+		t.Errorf("two months rejected: %v", err)
+	}
+	other := next
+	other.FrequenciesMHz = []float64{3.6}
+	for name, in := range map[string][]HFPredictionInput{
+		"none":          nil,
+		"thirteen":      make([]HFPredictionInput, maxHFMonths+1),
+		"other circuit": {hfInput(), other},
+	} {
+		if em, ok := checkHFReport(HFReportInput{Predictions: in}).(*huma.ErrorModel); !ok || em.Status != 422 {
+			t.Errorf("%s: want 422, got %v", name, em)
+		}
+	}
+}
