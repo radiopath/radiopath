@@ -14,6 +14,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/radiopath/radiopath/internal/coverage"
+	"github.com/radiopath/radiopath/internal/metrics"
 	"github.com/radiopath/radiopath/internal/plot"
 	"github.com/radiopath/radiopath/internal/report"
 	"github.com/radiopath/radiopath/internal/store"
@@ -304,6 +305,7 @@ func (s *Server) registerCoverages(api huma.API) {
 		if err := s.Store.ShareCoverage(ctx, owner, in.ID, randomToken(), time.Now().Add(shareTTL)); err != nil {
 			return nil, s.storeErr(err)
 		}
+		metrics.Events.WithLabelValues(metrics.EventSharePublished).Inc()
 		out, err := s.coverageOut(ctx, owner, in.ID)
 		if err != nil {
 			return nil, err
@@ -317,6 +319,7 @@ func (s *Server) registerCoverages(api huma.API) {
 		if err := s.Store.UnshareCoverage(ctx, userOf(ctx).ID, in.ID); err != nil {
 			return nil, s.storeErr(err)
 		}
+		metrics.Events.WithLabelValues(metrics.EventShareRevoked).Inc()
 		return nil, nil
 	})
 

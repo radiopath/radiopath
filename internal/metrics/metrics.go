@@ -8,8 +8,8 @@ import (
 var (
 	HTTPRequests = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "radiopath_http_requests_total",
-		Help: "HTTP requests by route pattern, method and status code.",
-	}, []string{"route", "method", "code"})
+		Help: "HTTP requests by route pattern, method, status code and the credential sent: token, session or none.",
+	}, []string{"route", "method", "code", "auth"})
 
 	HTTPDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "radiopath_http_request_duration_seconds",
@@ -65,3 +65,51 @@ var Logins = promauto.NewCounterVec(prometheus.CounterOpts{
 	Name: "radiopath_logins_total",
 	Help: "Login attempts by result.",
 }, []string{"result"})
+
+var Events = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "radiopath_events_total",
+	Help: "Account, token and share events by name.",
+}, []string{"event"})
+
+const (
+	EventRegistered     = "registered"
+	EventEmailVerified  = "email_verified"
+	EventPasswordReset  = "password_reset"
+	EventTokenCreated   = "token_created"
+	EventTokenRevoked   = "token_revoked"
+	EventSharePublished = "share_published" // created or extended
+	EventShareRevoked   = "share_revoked"
+)
+
+// JobKinds lists every job kind; keep in sync with store.KindCoverage and the kinds in internal/web/jobs.go.
+var JobKinds = []string{"coverage", "link-analysis", "hf-prediction", "hf-map"}
+
+// init creates every known label combination at zero, so dashboards see a series before the first event.
+func init() {
+	for _, k := range JobKinds {
+		for _, r := range []string{"done", "failed", "requeued"} {
+			Jobs.WithLabelValues(k, r)
+		}
+	}
+	for _, r := range []string{"ok", "error"} {
+		LinkAnalyses.WithLabelValues(r)
+	}
+	for _, k := range []string{"dem", "canopy"} {
+		for _, r := range []string{"hit", "miss"} {
+			DEMTiles.WithLabelValues(k, r)
+		}
+	}
+	for _, r := range []string{"ok", "notfound", "error"} {
+		S3Requests.WithLabelValues(r)
+	}
+	for _, r := range []string{"hit", "miss", "limited", "error", "canceled"} {
+		TileRequests.WithLabelValues(r)
+	}
+	for _, r := range []string{"success", "failure", "rate_limited"} {
+		Logins.WithLabelValues(r)
+	}
+	for _, e := range []string{EventRegistered, EventEmailVerified, EventPasswordReset, EventTokenCreated,
+		EventTokenRevoked, EventSharePublished, EventShareRevoked} {
+		Events.WithLabelValues(e)
+	}
+}

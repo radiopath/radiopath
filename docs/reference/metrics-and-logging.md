@@ -27,11 +27,13 @@ so there is nothing to authenticate. Locally: `curl localhost:9090/metrics`.
 
 Next to the `go_*` and `process_*` runtime metrics:
 
-- `radiopath_http_requests_total{route,method,code}` and
+- `radiopath_http_requests_total{route,method,code,auth}` and
   `radiopath_http_request_duration_seconds{route}`. `route` is always a
-  registered ServeMux pattern (`/coverages/{id}`), never the path — that one
-  carries ids, tile coordinates and share tokens. An unmatched
-  request is `other`. `/coverages/{id}/events` is an SSE stream of minutes and
+  registered ServeMux pattern (`/coverages/{id}`, `/s/c/{token}/report.pdf`),
+  never the path — that one carries ids, tile coordinates and share tokens. An
+  unmatched request is `other`. `auth` is the credential the request carries,
+  valid or not: `token` (an `Authorization` header), `session` (the session
+  cookie) or `none`. `/coverages/{id}/events` is an SSE stream of minutes and
   always lands in the `+Inf` bucket.
 - `radiopath_jobs_total{kind,result}` (done, failed, requeued) and
   `radiopath_job_duration_seconds{kind}`. The histogram covers successful
@@ -42,11 +44,21 @@ Next to the `go_*` and `process_*` runtime metrics:
   exist (sea) counts as a miss.
 - `radiopath_s3_requests_total{result}`, `radiopath_map_tiles_total{result}`,
   `radiopath_logins_total{result}`.
+- `radiopath_events_total{event}`: `registered`, `email_verified`,
+  `password_reset`, `token_created`, `token_revoked`, `share_published`
+  (created or extended) and `share_revoked`.
+- Every known label value of the counters above exists from the start at 0, so
+  a query never comes back empty just because nothing happened yet.
 - Gauges read from the database on every scrape: `radiopath_users`,
   `radiopath_sites`, `radiopath_links`, `radiopath_sessions_active` (sessions
   that have not expired, so in practice those used in the last seven days) and
   `radiopath_coverages{job_state}` and `radiopath_jobs{kind,state}`, the
-  queued ones being the queue depth. A database that is down leaves them out
+  queued ones being the queue depth (queued and running are always there, 0
+  when empty). Also `radiopath_users_active{window}` (1d, 7d, 30d: users seen
+  over a session or token, recorded at most once a minute),
+  `radiopath_antennas`, `radiopath_api_tokens` (not expired),
+  `radiopath_shares{kind}` (link, coverage; not expired) and
+  `radiopath_maintenance` (1 while on). A database that is down leaves them out
   and logs a warning; the scrape still succeeds and everything else is still
   there.
 
@@ -56,6 +68,8 @@ count. The counters and histograms are per pod and are summed as usual.
 
 ```promql
 max by (kind) (radiopath_jobs{state="queued"})           # jobs waiting
+max(radiopath_users_active{window="7d"})                 # weekly active users
+sum(rate(radiopath_http_requests_total{auth="token",route=~"/api/.*"}[1h]))
 sum(rate(radiopath_http_requests_total{code=~"5.."}[5m]))
 histogram_quantile(0.9, sum by (le) (rate(radiopath_job_duration_seconds_bucket{kind="coverage"}[1h])))
 ```

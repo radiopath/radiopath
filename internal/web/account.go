@@ -12,6 +12,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/radiopath/radiopath/internal/metrics"
 	"github.com/radiopath/radiopath/internal/store"
 )
 
@@ -308,6 +309,7 @@ func (s *Server) registerMailFlows(api huma.API) {
 			s.mailLater(u.Email, "Your Radiopath address was changed", fmt.Sprintf(changedMail, u.Name, s.BaseURL+"/forgot"))
 		}
 		s.Log.Info("email confirmed", "user", u.Name)
+		metrics.Events.WithLabelValues(metrics.EventEmailVerified).Inc()
 		return nil, nil
 	})
 
@@ -424,6 +426,7 @@ func (s *Server) registerMailFlows(api huma.API) {
 			return nil, s.storeErr(err)
 		}
 		s.Log.Info("password reset", "user", u.Name)
+		metrics.Events.WithLabelValues(metrics.EventPasswordReset).Inc()
 		return nil, nil
 	})
 }

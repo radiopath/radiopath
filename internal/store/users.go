@@ -197,21 +197,26 @@ func (s *Store) DeleteExpiredEmailTokens(ctx context.Context) (int64, error) {
 	return tag.RowsAffected(), err
 }
 
-// CreateSession stores a session for the user that expires at expires.
+// CreateSession stores a session for the user that expires at expires and marks the user as seen.
 func (s *Store) CreateSession(ctx context.Context, id string, userID int64, expires time.Time) error {
-	_, err := s.pool.Exec(ctx, `INSERT INTO sessions (id, user_id, expires_at) VALUES ($1, $2, $3)`, id, userID, expires)
+	_, err := s.pool.Exec(ctx, `WITH seen AS (UPDATE users SET last_seen_at = now() WHERE id = $2)
+	INSERT INTO sessions (id, user_id, expires_at) VALUES ($1, $2, $3)`, id, userID, expires)
 	return err
 }
 
 const sessionTarget = `LEAST(now() + make_interval(secs => $2), created_at + make_interval(secs => $3))`
 
-// SessionUser returns the user of a live session and extends its expiry by idle, capped at maxAge from creation; the update is skipped when the expiry is already within an hour of the target. ErrNotFound when missing or expired.
+// SessionUser returns the user of a live session and extends its expiry by idle, capped at maxAge from creation; the update is skipped when the expiry is already within an hour of the target. It marks the user as seen, at most once a minute. ErrNotFound when missing or expired.
 func (s *Store) SessionUser(ctx context.Context, id string, idle, maxAge time.Duration) (User, error) {
 	var u User
 	err := scanUser(s.pool.QueryRow(ctx, `WITH touched AS (
 		UPDATE sessions SET expires_at = `+sessionTarget+`
 		WHERE id = $1 AND expires_at > now()
 			AND expires_at NOT BETWEEN `+sessionTarget+` - interval '1 hour' AND `+sessionTarget+`
+	), seen AS (
+		UPDATE users SET last_seen_at = now()
+		WHERE id = (SELECT user_id FROM sessions WHERE id = $1 AND expires_at > now())
+			AND (last_seen_at IS NULL OR last_seen_at < now() - interval '1 minute')
 	)
 	SELECT `+userCols+` FROM sessions s JOIN users u ON u.id = s.user_id
 		WHERE s.id = $1 AND s.expires_at > now()`,

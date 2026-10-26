@@ -87,3 +87,57 @@ func TestSessionSliding(t *testing.T) {
 		t.Errorf("expired session revived: %.4f days left", d)
 	}
 }
+
+// last_seen_at follows the session at most once a minute and feeds the active-users counts of Stats.
+func TestLastSeen(t *testing.T) {
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		t.Skip("no DATABASE_URL")
+	}
+	ctx := context.Background()
+	st, err := New(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	var uid int64
+	if err := st.pool.QueryRow(ctx, `INSERT INTO users (name, password_hash) VALUES ('lastseen', 'x')
+		ON CONFLICT (name) DO UPDATE SET password_hash = 'x' RETURNING id`).Scan(&uid); err != nil {
+		t.Fatal(err)
+	}
+	defer st.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, uid)
+	st.pool.Exec(ctx, `DELETE FROM sessions WHERE id = 'lastseen'`)
+	if err := st.CreateSession(ctx, "lastseen", uid, time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	// last_seen_at put `ago` into the past, then one request; reports how far back it is afterwards
+	seenAfterUse := func(ago string) time.Duration {
+		if _, err := st.pool.Exec(ctx, `UPDATE users SET last_seen_at = now() - $2::interval WHERE id = $1`, uid, ago); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := st.SessionUser(ctx, "lastseen", time.Hour, 24*time.Hour); err != nil {
+			t.Fatal(err)
+		}
+		var d float64
+		if err := st.pool.QueryRow(ctx, `SELECT extract(epoch FROM now() - last_seen_at) FROM users WHERE id = $1`, uid).Scan(&d); err != nil {
+			t.Fatal(err)
+		}
+		return time.Duration(d * float64(time.Second))
+	}
+	if d := seenAfterUse("2 minutes"); d > 5*time.Second {
+		t.Errorf("older than a minute: not refreshed, %v ago", d)
+	}
+	if d := seenAfterUse("30 seconds"); d < 25*time.Second {
+		t.Errorf("within the minute: refreshed anyway, %v ago", d)
+	}
+
+	s, err := st.Stats(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.ActiveDay < 1 || s.ActiveWeek < s.ActiveDay || s.ActiveMonth < s.ActiveWeek {
+		t.Errorf("active users: day %d, week %d, month %d", s.ActiveDay, s.ActiveWeek, s.ActiveMonth)
+	}
+}

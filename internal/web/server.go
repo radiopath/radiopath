@@ -91,6 +91,7 @@ func (s *Server) Handler() http.Handler {
 	root.Handle("GET /coverages/{id}/composite.png", coverages(s.computeLimited(s.coverageComposite)))
 	root.Handle("GET /coverages/{id}/events", coverages(s.coverageEvents))
 
+	subs := map[string]*http.ServeMux{} // sub-muxes routeLabel descends into
 	if s.adminEnabled() {
 		admin := http.NewServeMux()
 		admin.HandleFunc("GET /admin/{$}", s.adminIndex)
@@ -106,6 +107,7 @@ func (s *Server) Handler() http.Handler {
 		admin.HandleFunc("/", s.notFound)
 		root.HandleFunc("GET /admin", s.adminIndex)
 		root.Handle("/admin/", admin)
+		subs["/admin/"] = admin
 	}
 	spa := s.spa()
 	// Shared pages are SPA routes; the API request behind each one counts against the token's limit.
@@ -122,6 +124,7 @@ func (s *Server) Handler() http.Handler {
 	share.HandleFunc("GET /s/c/{token}/composite.png", s.sharedCoverageComposite)
 	share.HandleFunc("/", s.notFound)
 	root.Handle("/s/", s.shareLimit(share))
+	subs["/s/"] = share
 	root.Handle("GET /tiles/{z}/{x}/{y}", s.Tiles)
 	root.HandleFunc("GET /robots.txt", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -133,7 +136,8 @@ func (s *Server) Handler() http.Handler {
 	root.Handle("/api/", s.authenticate(privateSpec(api)))
 	root.Handle("/", spa)
 
-	return secureHeaders(instrument(root, map[string]*http.ServeMux{"/api/": api}, http.NewCrossOriginProtection().Handler(root)))
+	subs["/api/"] = api
+	return secureHeaders(instrument(root, subs, http.NewCrossOriginProtection().Handler(root)))
 }
 
 // secureHeaders adds the nosniff, frame and referrer headers to every response.

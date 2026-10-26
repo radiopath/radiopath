@@ -382,5 +382,6 @@ func (s *Server) register(ctx context.Context, in *RegisterInput) (*struct{}, er
 		return nil, s.storeErr(err)
 	}
 	s.Log.Info("registered", "user", name, "remote", ip)
+	metrics.Events.WithLabelValues(metrics.EventRegistered).Inc()
 	return nil, nil
 }

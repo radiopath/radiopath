@@ -51,20 +51,33 @@ type JobCount struct {
 }
 
 type Stats struct {
-	Users, Sites, Links, Sessions int
-	Coverages                     map[string]int
-	Jobs                          []JobCount
+	Users, Sites, Links, Sessions, Antennas, Tokens int
+	ActiveDay, ActiveWeek, ActiveMonth              int // users seen within the window
+	SharedLinks, SharedCoverages                    int
+	Maintenance                                     bool
+	Coverages                                       map[string]int
+	Jobs                                            []JobCount
 }
 
-// Stats returns table counts, active sessions, coverages per job state and jobs per kind and state.
+// Stats returns table counts, active sessions, users, tokens and shares, the maintenance flag, coverages per job state
+// and jobs per kind and state.
 func (s *Store) Stats(ctx context.Context) (Stats, error) {
 	var st Stats
 	err := s.pool.QueryRow(ctx, `SELECT
 		(SELECT count(*) FROM users),
 		(SELECT count(*) FROM sites),
 		(SELECT count(*) FROM links),
-		(SELECT count(*) FROM sessions WHERE expires_at > now())`).
-		Scan(&st.Users, &st.Sites, &st.Links, &st.Sessions)
+		(SELECT count(*) FROM sessions WHERE expires_at > now()),
+		(SELECT count(*) FROM antennas),
+		(SELECT count(*) FROM api_tokens WHERE expires_at IS NULL OR expires_at > now()),
+		(SELECT count(*) FROM users WHERE last_seen_at > now() - interval '1 day'),
+		(SELECT count(*) FROM users WHERE last_seen_at > now() - interval '7 days'),
+		(SELECT count(*) FROM users WHERE last_seen_at > now() - interval '30 days'),
+		(SELECT count(*) FROM links WHERE share_expires_at > now()),
+		(SELECT count(*) FROM coverages WHERE share_expires_at > now()),
+		EXISTS (SELECT 1 FROM settings WHERE key = $1 AND value = 'on')`, maintenanceKey).
+		Scan(&st.Users, &st.Sites, &st.Links, &st.Sessions, &st.Antennas, &st.Tokens,
+			&st.ActiveDay, &st.ActiveWeek, &st.ActiveMonth, &st.SharedLinks, &st.SharedCoverages, &st.Maintenance)
 	if err != nil {
 		return st, err
 	}

@@ -64,7 +64,8 @@ func (s *Store) DeleteToken(ctx context.Context, owner, id int64) error {
 	return err
 }
 
-// TokenUser returns the user, token id and scopes of a live token and records its use, at most once a minute;
+// TokenUser returns the user, token id and scopes of a live token and records its use on the token and the user, at
+// most once a minute each;
 // ErrNotFound when missing or expired.
 func (s *Store) TokenUser(ctx context.Context, hash string) (User, int64, []string, error) {
 	var u User
@@ -74,6 +75,10 @@ func (s *Store) TokenUser(ctx context.Context, hash string) (User, int64, []stri
 		UPDATE api_tokens SET last_used_at = now()
 		WHERE token_hash = $1 AND (expires_at IS NULL OR expires_at > now())
 			AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')
+	), seen AS (
+		UPDATE users SET last_seen_at = now()
+		WHERE id = (SELECT user_id FROM api_tokens WHERE token_hash = $1 AND (expires_at IS NULL OR expires_at > now()))
+			AND (last_seen_at IS NULL OR last_seen_at < now() - interval '1 minute')
 	)
 	SELECT `+userCols+`, t.id, t.scopes FROM api_tokens t JOIN users u ON u.id = t.user_id
 		WHERE t.token_hash = $1 AND (t.expires_at IS NULL OR t.expires_at > now())`, hash).

@@ -9,7 +9,7 @@ import (
 	"github.com/radiopath/radiopath/internal/metrics"
 )
 
-// instrument records request count by route, method and status plus the duration for every request passing through next.
+// instrument records request count by route, method, status and credential plus the duration for every request passing through next.
 func instrument(root *http.ServeMux, subs map[string]*http.ServeMux, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		route := routeLabel(root, subs, r)
@@ -17,16 +17,31 @@ func instrument(root *http.ServeMux, subs map[string]*http.ServeMux, next http.H
 		start := time.Now()
 		next.ServeHTTP(rec, r)
 
-		metrics.HTTPRequests.WithLabelValues(route, r.Method, strconv.Itoa(rec.code)).Inc()
+		metrics.HTTPRequests.WithLabelValues(route, r.Method, strconv.Itoa(rec.code), authLabel(r)).Inc()
 		metrics.HTTPDuration.WithLabelValues(route).Observe(time.Since(start).Seconds())
 	})
 }
 
-// routeLabel returns the matched route pattern without its method as the metric label, so IDs and tokens do not blow up cardinality; unmatched requests give "other".
+// authLabel returns the credential r carries, valid or not: token for an Authorization header (which wins, as in
+// identify), session for the session cookie, else none.
+func authLabel(r *http.Request) string {
+	if r.Header.Get("Authorization") != "" {
+		return "token"
+	}
+	if _, err := r.Cookie(sessionCookie); err == nil {
+		return "session"
+	}
+	return "none"
+}
+
+// routeLabel returns the matched route pattern without its method as the metric label, so IDs and tokens do not blow up cardinality; unmatched requests, also those of a sub-mux catch-all, give "other".
 func routeLabel(root *http.ServeMux, subs map[string]*http.ServeMux, r *http.Request) string {
 	_, pattern := root.Handler(r)
 	if sub, ok := subs[pattern]; ok {
-		_, pattern = sub.Handler(r)
+		// a sub-mux catch-all only answers 404
+		if _, pattern = sub.Handler(r); pattern == "/" {
+			pattern = ""
+		}
 	}
 	if _, path, ok := strings.Cut(pattern, " "); ok {
 		return path

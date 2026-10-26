@@ -12,6 +12,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/radiopath/radiopath/internal/metrics"
 	"github.com/radiopath/radiopath/internal/store"
 )
 
@@ -230,6 +231,7 @@ func (s *Server) registerTokens(api huma.API) {
 			return nil, s.storeErr(err)
 		}
 		s.Log.Info("API token created", "user", u.Name, "token", t.ID, "scopes", strings.Join(scopes, " "))
+		metrics.Events.WithLabelValues(metrics.EventTokenCreated).Inc()
 		if s.Mail != nil && u.Email != "" {
 			expires := "never"
 			if t.ExpiresAt != nil {
@@ -248,6 +250,7 @@ func (s *Server) registerTokens(api huma.API) {
 			return nil, s.storeErr(err)
 		}
 		s.Log.Info("API token revoked", "user", u.Name, "token", in.ID)
+		metrics.Events.WithLabelValues(metrics.EventTokenRevoked).Inc()
 		return nil, nil
 	})
 }

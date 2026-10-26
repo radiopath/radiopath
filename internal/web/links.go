@@ -12,6 +12,7 @@ import (
 	"github.com/radiopath/radiopath/internal/geo"
 	"github.com/radiopath/radiopath/internal/itm"
 	"github.com/radiopath/radiopath/internal/link"
+	"github.com/radiopath/radiopath/internal/metrics"
 	"github.com/radiopath/radiopath/internal/plot"
 	"github.com/radiopath/radiopath/internal/report"
 	"github.com/radiopath/radiopath/internal/store"
@@ -275,6 +276,7 @@ func (s *Server) registerLinks(api huma.API) {
 		if err := s.Store.ShareLink(ctx, owner, in.ID, randomToken(), time.Now().Add(shareTTL)); err != nil {
 			return nil, s.storeErr(err)
 		}
+		metrics.Events.WithLabelValues(metrics.EventSharePublished).Inc()
 		out, err := s.linkOut(ctx, owner, in.ID)
 		if err != nil {
 			return nil, err
@@ -288,6 +290,7 @@ func (s *Server) registerLinks(api huma.API) {
 		if err := s.Store.UnshareLink(ctx, userOf(ctx).ID, in.ID); err != nil {
 			return nil, s.storeErr(err)
 		}
+		metrics.Events.WithLabelValues(metrics.EventShareRevoked).Inc()
 		return nil, nil
 	})
 
