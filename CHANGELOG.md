@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-10-30
+
 ### Fixed
 
 - Deleting a site that a link or coverage still uses answers 409 with "Site is used by a link or coverage and cannot be deleted." instead of a server error (by @HB9HIL)
