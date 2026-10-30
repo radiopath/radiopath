@@ -121,7 +121,8 @@ func mapErr(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
-		case "23503":
+		// 23001: ON DELETE RESTRICT (sites), 23503: other foreign-key violations
+		case "23001", "23503":
 			return ErrInUse
 		case "23505":
 			return ErrExists
