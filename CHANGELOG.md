@@ -7,27 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-11-10
+
+### Chore
+- Go deps updated (by @HB9HIL)
+
 ## [2.4.1] - 2026-10-30
 
 ### Fixed
-
 - Deleting a site that a link or coverage still uses answers 409 with "Site is used by a link or coverage and cannot be deleted." instead of a server error (by @HB9HIL)
 
 ## [2.4.0] - 2026-10-26
 
 ### Added
-
 - The configuration reference explains `pool_max_conns` in `DATABASE_URL` and how to size it against the server's `max_connections` (by @HB9HIL)
 - `make clean` removes the build and test output (by @HB9HIL)
 - HF prediction: "Print report" turns the predicted months into a PDF with the conditions, the reliability grid and per month the MUF and reliability charts and an hourly table (by @HB9HIL)
 - Usage metrics: requests carry an `auth` label (token, session, none), `radiopath_events_total` counts registrations, confirmations, password resets, tokens and shares, and new gauges report active users over 1, 7 and 30 days, antennas, API tokens, shares and maintenance mode (by @HB9HIL)
 
 ### Changed
-
 - Metrics: the share and admin routes get their own `route` label instead of `/s/` and `/admin/`, and every known label value of a counter exists from the start at 0 (by @HB9HIL)
 
 ### Fixed
-
 - HF prediction: the night shading on the world map no longer brightens the map in dark mode, so day and night read correctly in both themes (by @HB9HIL)
 
 ## [2.3.0] - 2026-10-25
