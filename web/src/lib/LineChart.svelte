@@ -6,7 +6,7 @@
 </script>
 
 <script lang="ts">
-	import InfoButton from '$lib/InfoButton.svelte';
+	import InfoButton from '#lib/InfoButton.svelte';
 
 	// A line chart over the hours of a day as inline SVG, so no chart library is needed. hover is the hour under the
 	// pointer; bound by the page, the charts share one crosshair.

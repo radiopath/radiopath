@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { sections } from '$lib/nav';
+	import { sections } from '#lib/nav.ts';
 </script>
 
 <!-- Phones only: the sections within reach of the thumb. -->

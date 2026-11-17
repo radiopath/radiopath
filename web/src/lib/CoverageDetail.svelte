@@ -1,13 +1,13 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import type { CoverageDetail, CoverageView } from '$lib/api';
-	import * as Alert from '$lib/components/ui/alert';
-	import { Button } from '$lib/components/ui/button';
-	import CoverageMap from '$lib/CoverageMap.svelte';
-	import { day } from '$lib/format';
-	import LegendTable from '$lib/LegendTable.svelte';
-	import PageHead from '$lib/PageHead.svelte';
-	import StatTiles from '$lib/StatTiles.svelte';
+	import type { CoverageDetail, CoverageView } from '#lib/api.ts';
+	import * as Alert from '#lib/components/ui/alert/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import CoverageMap from '#lib/CoverageMap.svelte';
+	import { day } from '#lib/format.ts';
+	import LegendTable from '#lib/LegendTable.svelte';
+	import PageHead from '#lib/PageHead.svelte';
+	import StatTiles from '#lib/StatTiles.svelte';
 
 	// path is where report and rasters live: /coverages/<id> for the owner, /s/c/<token> for a visitor.
 	let {

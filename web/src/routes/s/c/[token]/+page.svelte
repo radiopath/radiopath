@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
-	import { api, call } from '$lib/api';
-	import CoverageDetail from '$lib/CoverageDetail.svelte';
-	import DetailSkeleton from '$lib/DetailSkeleton.svelte';
-	import FormErrors from '$lib/FormErrors.svelte';
+	import { api, call } from '#lib/api.ts';
+	import CoverageDetail from '#lib/CoverageDetail.svelte';
+	import DetailSkeleton from '#lib/DetailSkeleton.svelte';
+	import FormErrors from '#lib/FormErrors.svelte';
 
 	const token = page.params.token ?? '';
 	const c = createQuery(() => ({

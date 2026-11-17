@@ -21,14 +21,14 @@
 	import Copy from '@lucide/svelte/icons/copy';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import { toast } from 'svelte-sonner';
-	import { api, call, type Schemas } from '$lib/api';
-	import * as Alert from '$lib/components/ui/alert';
-	import { Button } from '$lib/components/ui/button';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Input } from '$lib/components/ui/input';
-	import { NativeSelect } from '$lib/components/ui/native-select';
-	import Field from '$lib/Field.svelte';
-	import { notifyError } from '$lib/notify';
+	import { api, call, type Schemas } from '#lib/api.ts';
+	import * as Alert from '#lib/components/ui/alert/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as Dialog from '#lib/components/ui/dialog/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
+	import Field from '#lib/Field.svelte';
+	import { notifyError } from '#lib/notify.ts';
 
 	// oncreated reloads the list; the secret stays in this dialog until it is closed.
 	let { open = $bindable(false), oncreated }: { open?: boolean; oncreated: () => Promise<unknown> } = $props();

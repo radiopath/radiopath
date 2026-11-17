@@ -1,7 +1,7 @@
 <script lang="ts">
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import { buttonVariants } from '$lib/components/ui/button';
-	import { confirmState } from '$lib/confirm.svelte';
+	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.ts';
+	import { buttonVariants } from '#lib/components/ui/button/index.ts';
+	import { confirmState } from '#lib/confirm.svelte.ts';
 
 	const p = $derived(confirmState.pending);
 </script>

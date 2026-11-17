@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
-	import { meQuery } from '$lib/api';
-	import BottomNav from '$lib/BottomNav.svelte';
-	import Footer from '$lib/Footer.svelte';
-	import Header from '$lib/Header.svelte';
+	import { meQuery } from '#lib/api.ts';
+	import BottomNav from '#lib/BottomNav.svelte';
+	import Footer from '#lib/Footer.svelte';
+	import Header from '#lib/Header.svelte';
 
 	let { children }: { children: Snippet } = $props();
 	// Inside the query provider, so it can tell whether the tab bar is there and needs room.

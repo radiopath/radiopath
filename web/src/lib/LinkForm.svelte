@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	import type { Link } from '$lib/api';
+	import type { Link } from '#lib/api.ts';
 
 	export type LinkValues = Record<
 		| 'name'
@@ -79,13 +79,13 @@
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { api, call, parseNum, type LinkInput } from '$lib/api';
-	import * as Alert from '$lib/components/ui/alert';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { NativeSelect } from '$lib/components/ui/native-select';
-	import Field from '$lib/Field.svelte';
-	import { invalid, notifyError } from '$lib/notify';
+	import { api, call, parseNum, type LinkInput } from '#lib/api.ts';
+	import * as Alert from '#lib/components/ui/alert/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
+	import Field from '#lib/Field.svelte';
+	import { invalid, notifyError } from '#lib/notify.ts';
 
 	let { id, initial }: { id?: number; initial: LinkValues } = $props();
 	const queryClient = useQueryClient();

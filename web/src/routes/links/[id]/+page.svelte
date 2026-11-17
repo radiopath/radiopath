@@ -3,13 +3,13 @@
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import { page } from '$app/state';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { api, call } from '$lib/api';
-	import { Button } from '$lib/components/ui/button';
-	import DetailSkeleton from '$lib/DetailSkeleton.svelte';
-	import FormErrors from '$lib/FormErrors.svelte';
-	import LinkDetail from '$lib/LinkDetail.svelte';
-	import RowActions from '$lib/RowActions.svelte';
-	import ShareDialog from '$lib/ShareDialog.svelte';
+	import { api, call } from '#lib/api.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import DetailSkeleton from '#lib/DetailSkeleton.svelte';
+	import FormErrors from '#lib/FormErrors.svelte';
+	import LinkDetail from '#lib/LinkDetail.svelte';
+	import RowActions from '#lib/RowActions.svelte';
+	import ShareDialog from '#lib/ShareDialog.svelte';
 
 	const id = Number(page.params.id);
 	const path = { params: { path: { id } } };

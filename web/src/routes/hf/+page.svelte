@@ -2,22 +2,22 @@
 	import Waves from '@lucide/svelte/icons/audio-waveform';
 	import { tick } from 'svelte';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { api, call, parseNum, type HFMap, type HFPoint, type HFPredictionInput, type Site } from '$lib/api';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { NativeSelect } from '$lib/components/ui/native-select';
-	import { Skeleton } from '$lib/components/ui/skeleton';
-	import EmptyState from '$lib/EmptyState.svelte';
-	import Field from '$lib/Field.svelte';
-	import FormErrors from '$lib/FormErrors.svelte';
-	import HFWorldMap, { heat } from '$lib/HFWorldMap.svelte';
-	import HFGrid from '$lib/HFGrid.svelte';
-	import LineChart, { type Pt } from '$lib/LineChart.svelte';
-	import { invalid, notifyError } from '$lib/notify';
-	import PageHead from '$lib/PageHead.svelte';
-	import InfoButton from '$lib/InfoButton.svelte';
-	import Notice from '$lib/Notice.svelte';
-	import StatTiles, { type Tile } from '$lib/StatTiles.svelte';
+	import { api, call, parseNum, type HFMap, type HFPoint, type HFPredictionInput, type Site } from '#lib/api.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
+	import { Skeleton } from '#lib/components/ui/skeleton/index.ts';
+	import EmptyState from '#lib/EmptyState.svelte';
+	import Field from '#lib/Field.svelte';
+	import FormErrors from '#lib/FormErrors.svelte';
+	import HFWorldMap, { heat } from '#lib/HFWorldMap.svelte';
+	import HFGrid from '#lib/HFGrid.svelte';
+	import LineChart, { type Pt } from '#lib/LineChart.svelte';
+	import { invalid, notifyError } from '#lib/notify.ts';
+	import PageHead from '#lib/PageHead.svelte';
+	import InfoButton from '#lib/InfoButton.svelte';
+	import Notice from '#lib/Notice.svelte';
+	import StatTiles, { type Tile } from '#lib/StatTiles.svelte';
 
 	const now = new Date();
 	// The model knows a month and the hours of a day, so a range is one prediction per month.

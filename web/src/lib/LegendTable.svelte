@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Coverage } from '$lib/api';
+	import type { Coverage } from '#lib/api.ts';
 
 	let { c }: { c: Pick<Coverage, 'legend' | 'legend_floor'> } = $props();
 </script>

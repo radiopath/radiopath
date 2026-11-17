@@ -1,6 +1,6 @@
 <script lang="ts">
-	import * as Alert from '$lib/components/ui/alert';
-	import { ApiError } from '$lib/api';
+	import * as Alert from '#lib/components/ui/alert/index.ts';
+	import { ApiError } from '#lib/api.ts';
 
 	let { error }: { error: unknown } = $props();
 	const messages = $derived(error instanceof ApiError && error.errors.length ? error.errors : error ? [(error as Error).message] : []);

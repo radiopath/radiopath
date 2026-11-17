@@ -26,17 +26,6 @@
             "matchDatasources": ["docker"],
             "matchPackageNames": ["node"],
             "allowedVersions": "/^26(\\.|-|$)/"
-        },
-        {
-            "description": "SvelteKit 3 is too new: bits-ui (via runed) does not support it yet; adapter-static 4 needs it",
-            "matchDatasources": ["npm"],
-            "matchPackageNames": ["@sveltejs/kit"],
-            "allowedVersions": "<3.0.0"
-        },
-        {
-            "matchDatasources": ["npm"],
-            "matchPackageNames": ["@sveltejs/adapter-static"],
-            "allowedVersions": "<4.0.0"
         }
     ]
 }

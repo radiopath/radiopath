@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	import type { Coverage } from '$lib/api';
+	import type { Coverage } from '#lib/api.ts';
 
 	export type CoverageValues = Record<
 		| 'name'
@@ -70,14 +70,14 @@
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { api, call, parseNum, type CoverageInput } from '$lib/api';
-	import * as Alert from '$lib/components/ui/alert';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { NativeSelect } from '$lib/components/ui/native-select';
-	import Field from '$lib/Field.svelte';
-	import { invalid, notifyError } from '$lib/notify';
-	import LegendTable from '$lib/LegendTable.svelte';
+	import { api, call, parseNum, type CoverageInput } from '#lib/api.ts';
+	import * as Alert from '#lib/components/ui/alert/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
+	import Field from '#lib/Field.svelte';
+	import { invalid, notifyError } from '#lib/notify.ts';
+	import LegendTable from '#lib/LegendTable.svelte';
 
 	// legend is the custom legend of the coverage a new one is copied from.
 	let { id, initial, legend }: { id?: number; initial: CoverageValues; legend?: Pick<Coverage, 'legend' | 'legend_floor'> } = $props();

@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { createQuery } from '@tanstack/svelte-query';
-	import { api, call, configQuery } from '$lib/api';
-	import AuthCard from '$lib/AuthCard.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import Field from '$lib/Field.svelte';
-	import { invalid, notifyError } from '$lib/notify';
+	import { api, call, configQuery } from '#lib/api.ts';
+	import AuthCard from '#lib/AuthCard.svelte';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import Field from '#lib/Field.svelte';
+	import { invalid, notifyError } from '#lib/notify.ts';
 
 	const config = createQuery(configQuery);
 	let name = $state('');

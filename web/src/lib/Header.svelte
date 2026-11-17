@@ -9,12 +9,12 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { createQuery } from '@tanstack/svelte-query';
-	import { api, meQuery } from '$lib/api';
-	import { Button } from '$lib/components/ui/button';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { sections } from '$lib/nav';
-	import { theme } from '$lib/theme.svelte';
-	import ThemeToggle from '$lib/ThemeToggle.svelte';
+	import { api, meQuery } from '#lib/api.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
+	import { sections } from '#lib/nav.ts';
+	import { theme } from '#lib/theme.svelte.ts';
+	import ThemeToggle from '#lib/ThemeToggle.svelte';
 
 	const me = createQuery(meQuery);
 

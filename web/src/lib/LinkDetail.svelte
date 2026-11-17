@@ -1,12 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import type { LinkDetail } from '$lib/api';
-	import * as Alert from '$lib/components/ui/alert';
-	import { Button } from '$lib/components/ui/button';
-	import { day, offBoresight, signed } from '$lib/format';
-	import { linkMap } from '$lib/map';
-	import PageHead from '$lib/PageHead.svelte';
-	import StatTiles from '$lib/StatTiles.svelte';
+	import type { LinkDetail } from '#lib/api.ts';
+	import * as Alert from '#lib/components/ui/alert/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { day, offBoresight, signed } from '#lib/format.ts';
+	import { linkMap } from '#lib/map.ts';
+	import PageHead from '#lib/PageHead.svelte';
+	import StatTiles from '#lib/StatTiles.svelte';
 
 	// path is where the report lives: /links/<id> for the owner, /s/l/<token> for a visitor; actions are the owner's buttons.
 	let { d, path, shared = false, actions }: { d: LinkDetail; path: string; shared?: boolean; actions?: Snippet } = $props();

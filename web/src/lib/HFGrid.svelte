@@ -8,9 +8,9 @@
 </script>
 
 <script lang="ts">
-	import type { HFPoint } from '$lib/api';
-	import { heat } from '$lib/HFWorldMap.svelte';
-	import InfoButton from '$lib/InfoButton.svelte';
+	import type { HFPoint } from '#lib/api.ts';
+	import { heat } from '#lib/HFWorldMap.svelte';
+	import InfoButton from '#lib/InfoButton.svelte';
 
 	// The prediction at a glance: one grid per frequency, a row per month, a column per hour, the cell coloured by reliability.
 	// hover is the hour under the pointer, shared with the crosshair of the charts.

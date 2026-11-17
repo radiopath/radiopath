@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
-	import { meQuery } from '$lib/api';
+	import { meQuery } from '#lib/api.ts';
 
 	const me = createQuery(meQuery);
 </script>

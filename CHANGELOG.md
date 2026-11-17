@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Chore
+- SvelteKit updated to 3.1.1 and adapter-static to 4.0.1, which close the Dependabot alerts GHSA-3r8g-jcqq-3p5j, GHSA-6cf5-gc4q-fm3x, GHSA-rqp5-r3wg-vg35 and GHSA-jf9x-2fg2-hx4w (none was exploitable in the static SPA); the SvelteKit config moved from `svelte.config.js` into `vite.config.ts`, `$lib` imports became `#lib/...` (by @HB9HIL)
+- The `cookie` 0.7.2 pin and the Renovate hold on SvelteKit 3 and adapter-static 4 are removed: SvelteKit 3 ships cookie 2, and bits-ui only needs SvelteKit as an optional peer (by @HB9HIL)
+
 ## [2.4.2] - 2026-11-10
 
 ### Chore

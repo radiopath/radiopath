@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
-	import { api, call, parseNum, type CoverageDetail, type LegendBin } from '$lib/api';
-	import { Button } from '$lib/components/ui/button';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Input } from '$lib/components/ui/input';
-	import { invalid, notifyError } from '$lib/notify';
+	import { api, call, parseNum, type CoverageDetail, type LegendBin } from '#lib/api.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as Dialog from '#lib/components/ui/dialog/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import { invalid, notifyError } from '#lib/notify.ts';
 
 	let { d, onchange }: { d: CoverageDetail; onchange: () => Promise<unknown> } = $props();
 	// The server allows this many bins; empty rows are dropped.

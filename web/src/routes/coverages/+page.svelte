@@ -6,17 +6,17 @@
 	import Trash from '@lucide/svelte/icons/trash';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { toast } from 'svelte-sonner';
-	import { api, call, type Coverage } from '$lib/api';
-	import { Button } from '$lib/components/ui/button';
-	import * as Table from '$lib/components/ui/table';
-	import { ask } from '$lib/confirm.svelte';
-	import EmptyState from '$lib/EmptyState.svelte';
-	import FormErrors from '$lib/FormErrors.svelte';
-	import ListSkeleton from '$lib/ListSkeleton.svelte';
-	import { notifyError } from '$lib/notify';
-	import JobBadge from '$lib/JobBadge.svelte';
-	import PageHead from '$lib/PageHead.svelte';
-	import RowActions from '$lib/RowActions.svelte';
+	import { api, call, type Coverage } from '#lib/api.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as Table from '#lib/components/ui/table/index.ts';
+	import { ask } from '#lib/confirm.svelte.ts';
+	import EmptyState from '#lib/EmptyState.svelte';
+	import FormErrors from '#lib/FormErrors.svelte';
+	import ListSkeleton from '#lib/ListSkeleton.svelte';
+	import { notifyError } from '#lib/notify.ts';
+	import JobBadge from '#lib/JobBadge.svelte';
+	import PageHead from '#lib/PageHead.svelte';
+	import RowActions from '#lib/RowActions.svelte';
 
 	const queryClient = useQueryClient();
 	const coverages = createQuery(() => ({ queryKey: ['coverages'], queryFn: () => call(api.GET('/api/coverages')) }));

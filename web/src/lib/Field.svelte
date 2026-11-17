@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Label } from '$lib/components/ui/label';
+	import { Label } from '#lib/components/ui/label/index.ts';
 
 	// wide puts the label left of the field from sm up, for the long forms; otherwise it sits above.
 	let { label, wide = false, children }: { label: string; wide?: boolean; children: Snippet } = $props();

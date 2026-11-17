@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { ApiError, api, call } from '$lib/api';
-	import AuthCard from '$lib/AuthCard.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import Field from '$lib/Field.svelte';
-	import FormErrors from '$lib/FormErrors.svelte';
-	import { invalid, notifyError } from '$lib/notify';
+	import { ApiError, api, call } from '#lib/api.ts';
+	import AuthCard from '#lib/AuthCard.svelte';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import Field from '#lib/Field.svelte';
+	import FormErrors from '#lib/FormErrors.svelte';
+	import { invalid, notifyError } from '#lib/notify.ts';
 
 	// The mail link carries the token in the fragment, which never reaches a server or its logs.
 	const token = location.hash.slice(1);

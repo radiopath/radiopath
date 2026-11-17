@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import * as Alert from '$lib/components/ui/alert';
+	import * as Alert from '#lib/components/ui/alert/index.ts';
 
 	let { children }: { children: Snippet } = $props();
 </script>

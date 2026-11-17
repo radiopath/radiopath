@@ -3,14 +3,14 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import { ApiError, api, call, configQuery, meQuery, safeNext } from '$lib/api';
-	import AuthCard from '$lib/AuthCard.svelte';
-	import * as Alert from '$lib/components/ui/alert';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import Field from '$lib/Field.svelte';
-	import Notice from '$lib/Notice.svelte';
-	import { notifyError } from '$lib/notify';
+	import { ApiError, api, call, configQuery, meQuery, safeNext } from '#lib/api.ts';
+	import AuthCard from '#lib/AuthCard.svelte';
+	import * as Alert from '#lib/components/ui/alert/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import Field from '#lib/Field.svelte';
+	import Notice from '#lib/Notice.svelte';
+	import { notifyError } from '#lib/notify.ts';
 
 	const notices: Record<string, string> = {
 		registered: 'Almost done: check your mail for the next step.',

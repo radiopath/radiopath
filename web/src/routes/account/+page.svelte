@@ -3,14 +3,14 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import { api, call } from '$lib/api';
-	import { Button } from '$lib/components/ui/button';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Input } from '$lib/components/ui/input';
-	import Field from '$lib/Field.svelte';
-	import FormErrors from '$lib/FormErrors.svelte';
-	import { notifyError } from '$lib/notify';
-	import SettingsSection from '$lib/SettingsSection.svelte';
+	import { api, call } from '#lib/api.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as Dialog from '#lib/components/ui/dialog/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import Field from '#lib/Field.svelte';
+	import FormErrors from '#lib/FormErrors.svelte';
+	import { notifyError } from '#lib/notify.ts';
+	import SettingsSection from '#lib/SettingsSection.svelte';
 
 	// The page needs a login: call() sends a guest there on 401.
 	const me = createQuery(() => ({ queryKey: ['me', 'account'], queryFn: () => call(api.GET('/api/me')) }));

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import L from 'leaflet';
 	import { onMount } from 'svelte';
-	import type { CoverageDetail, CoverageView } from '$lib/api';
-	import { baseMap } from '$lib/map';
+	import type { CoverageDetail, CoverageView } from '#lib/api.ts';
+	import { baseMap } from '#lib/map.ts';
 
 	// save stores the view for the owner; a visitor's map has none and only shows what was saved.
 	let { d, save }: { d: CoverageDetail; save?: (v: CoverageView) => void } = $props();

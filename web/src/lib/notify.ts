@@ -1,5 +1,5 @@
 import { toast } from 'svelte-sonner';
-import { ApiError } from '$lib/api';
+import { ApiError } from '#lib/api.ts';
 
 /** Shows the error of an action as a toast: one invalid field as the message, several as a list below it. */
 export function notifyError(err: unknown) {

@@ -5,17 +5,17 @@
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { toast } from 'svelte-sonner';
-	import { api, call, type Token } from '$lib/api';
-	import { Button } from '$lib/components/ui/button';
-	import * as Table from '$lib/components/ui/table';
-	import { ask } from '$lib/confirm.svelte';
-	import EmptyState from '$lib/EmptyState.svelte';
-	import { day, fromNow } from '$lib/format';
-	import FormErrors from '$lib/FormErrors.svelte';
-	import ListSkeleton from '$lib/ListSkeleton.svelte';
-	import { notifyError } from '$lib/notify';
-	import RowActions from '$lib/RowActions.svelte';
-	import TokenDialog, { scopeSummary } from '$lib/TokenDialog.svelte';
+	import { api, call, type Token } from '#lib/api.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as Table from '#lib/components/ui/table/index.ts';
+	import { ask } from '#lib/confirm.svelte.ts';
+	import EmptyState from '#lib/EmptyState.svelte';
+	import { day, fromNow } from '#lib/format.ts';
+	import FormErrors from '#lib/FormErrors.svelte';
+	import ListSkeleton from '#lib/ListSkeleton.svelte';
+	import { notifyError } from '#lib/notify.ts';
+	import RowActions from '#lib/RowActions.svelte';
+	import TokenDialog, { scopeSummary } from '#lib/TokenDialog.svelte';
 
 	const queryClient = useQueryClient();
 	const tokens = createQuery(() => ({ queryKey: ['tokens'], queryFn: () => call(api.GET('/api/me/tokens')) }));

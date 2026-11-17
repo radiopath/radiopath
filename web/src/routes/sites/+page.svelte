@@ -6,17 +6,17 @@
 	import Trash from '@lucide/svelte/icons/trash';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { toast } from 'svelte-sonner';
-	import { api, call, type Site } from '$lib/api';
-	import { Button } from '$lib/components/ui/button';
-	import * as Table from '$lib/components/ui/table';
-	import { ask } from '$lib/confirm.svelte';
-	import EmptyState from '$lib/EmptyState.svelte';
-	import FormErrors from '$lib/FormErrors.svelte';
-	import ListSkeleton from '$lib/ListSkeleton.svelte';
-	import { notifyError } from '$lib/notify';
-	import PageHead from '$lib/PageHead.svelte';
-	import RowActions from '$lib/RowActions.svelte';
-	import SitesMap from '$lib/SitesMap.svelte';
+	import { api, call, type Site } from '#lib/api.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as Table from '#lib/components/ui/table/index.ts';
+	import { ask } from '#lib/confirm.svelte.ts';
+	import EmptyState from '#lib/EmptyState.svelte';
+	import FormErrors from '#lib/FormErrors.svelte';
+	import ListSkeleton from '#lib/ListSkeleton.svelte';
+	import { notifyError } from '#lib/notify.ts';
+	import PageHead from '#lib/PageHead.svelte';
+	import RowActions from '#lib/RowActions.svelte';
+	import SitesMap from '#lib/SitesMap.svelte';
 
 	const queryClient = useQueryClient();
 	const sites = createQuery(() => ({ queryKey: ['sites'], queryFn: () => call(api.GET('/api/sites')) }));

@@ -2,12 +2,12 @@
 	import { goto } from '$app/navigation';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import { toast } from 'svelte-sonner';
-	import { api, call, parseNum, type SiteInput } from '$lib/api';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import Field from '$lib/Field.svelte';
-	import { invalid, notifyError } from '$lib/notify';
-	import { sitePicker } from '$lib/map';
+	import { api, call, parseNum, type SiteInput } from '#lib/api.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import Field from '#lib/Field.svelte';
+	import { invalid, notifyError } from '#lib/notify.ts';
+	import { sitePicker } from '#lib/map.ts';
 
 	let { id, initial }: { id?: number; initial: { name: string; lat: string; lon: string; antenna_height_m: string } } = $props();
 	const queryClient = useQueryClient();

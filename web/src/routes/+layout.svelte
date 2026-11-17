@@ -1,9 +1,9 @@
 <script lang="ts">
 	import '../app.css';
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
-	import ConfirmHost from '$lib/ConfirmHost.svelte';
-	import { Toaster } from '$lib/components/ui/sonner';
-	import Shell from '$lib/Shell.svelte';
+	import ConfirmHost from '#lib/ConfirmHost.svelte';
+	import { Toaster } from '#lib/components/ui/sonner/index.ts';
+	import Shell from '#lib/Shell.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();

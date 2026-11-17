@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
 	import { onMount } from 'svelte';
-	import { api, call } from '$lib/api';
-	import { theme } from '$lib/theme.svelte';
+	import { api, call } from '#lib/api.ts';
+	import { theme } from '#lib/theme.svelte.ts';
 
 	// The description needs a login; call() sends a guest there on 401.
 	const me = createQuery(() => ({ queryKey: ['me', 'api-reference'], queryFn: () => call(api.GET('/api/me')) }));

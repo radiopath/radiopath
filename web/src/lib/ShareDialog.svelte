@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
-	import { call, type Share } from '$lib/api';
-	import { Button } from '$lib/components/ui/button';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Input } from '$lib/components/ui/input';
-	import { day } from '$lib/format';
-	import { notifyError } from '$lib/notify';
+	import { call, type Share } from '#lib/api.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as Dialog from '#lib/components/ui/dialog/index.ts';
+	import { Input } from '#lib/components/ui/input/index.ts';
+	import { day } from '#lib/format.ts';
+	import { notifyError } from '#lib/notify.ts';
 
 	// create and revoke call the share API of the object; onchange reloads it.
 	let {

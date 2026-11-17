@@ -6,8 +6,8 @@
 </script>
 
 <script lang="ts">
-	import type { HFMap } from '$lib/api';
-	import land from '$lib/land.json';
+	import type { HFMap } from '#lib/api.ts';
+	import land from '#lib/land.json';
 
 	type Pt = { name: string; lat: number; lon: number };
 	// A flat world map, x = longitude and y = latitude, so every cell of the model is a rectangle of the same size.

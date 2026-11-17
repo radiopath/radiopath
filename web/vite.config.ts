@@ -1,3 +1,5 @@
+import adapter from '@sveltejs/adapter-static';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
@@ -9,8 +11,19 @@ const backend = process.env.BACKEND ?? 'http://localhost:8080';
 const goPaths = '^/(api|admin|tiles|healthz|readyz|robots\\.txt)(/|$)|^/(links|coverages|s)/.+\\.(png|pdf)(\\?|$)|^/coverages/\\d+/events';
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit()],
-	server: {
-		proxy: { [goPaths]: backend }
-	}
+	plugins: [
+		tailwindcss(),
+		sveltekit({
+			preprocess: vitePreprocess(),
+			compilerOptions: { runes: true },
+			paths: { relative: false },
+			version: { pollInterval: 60000 },
+			adapter: adapter({
+				pages: '../internal/webui/dist',
+				assets: '../internal/webui/dist',
+				fallback: 'index.html'
+			})
+		})
+	],
+	server: { proxy: { [goPaths]: backend } }
 });
